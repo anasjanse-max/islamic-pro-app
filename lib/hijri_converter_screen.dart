@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'favorites_service.dart';
-import 'more_screen.dart'; // Navigates smoothly back to More screen
+import 'more_screen.dart';
+import 'settings_screen.dart';
 
 class HijriConverterScreen extends StatefulWidget {
   const HijriConverterScreen({super.key});
@@ -12,22 +13,29 @@ class HijriConverterScreen extends StatefulWidget {
 }
 
 class _HijriConverterScreenState extends State<HijriConverterScreen> {
-  static const Color background = Color(0xFF000000);
-  static const Color card = Color(0xFF0A0F0C);
-  static const Color card2 = Color(0xFF101613);
+  // ==========================================================
+  // DYNAMIC PALETTE BASED ON DARK MODE STATE
+  // ==========================================================
+  bool get _isDark => ThemeService.isDarkMode.value;
 
-  static const Color green = Color(0xFF26E17A);
-  static const Color greenDark = Color(0xFF0C3323);
-  static const Color gold = Color(0xFFE8B63D);
+  Color get appBackground => _isDark ? const Color(0xFF0B1511) : const Color(0xFFF7F6F1);
+  Color get surfaceWhite => _isDark ? const Color(0xFF14221C) : const Color(0xFFFFFFFF);
+  Color get secondarySurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
 
-  static const Color whiteText = Color(0xFFF4F6F5);
-  static const Color greyText = Color(0xFF98A19D);
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
+
+  Color get textPrimary => _isDark ? const Color(0xFFF4F6F2) : const Color(0xFF1D2924);
+  Color get textSecondary => _isDark ? const Color(0xFFAAB6AF) : const Color(0xFF66736D);
+  Color get textInactive => _isDark ? const Color(0xFF718079) : const Color(0xFF718079);
+  Color get borderSubtle => _isDark ? const Color(0xFF24332B) : const Color(0xFFD5DFDA);
 
   int _selectedTab = 0;
 
-  // Hijri Selection Variables (Initialized to 22 Rabi' al-Awwal 1448 for today)
-  int _selectedHDay = 22;
-  int _selectedHMonth = 3; // Rabi' al-Awwal
+  int _selectedHDay = 17;
+  int _selectedHMonth = 4; // Rabi' al-Thani
   int _selectedHYear = 1448;
   String _gregorianResult = '';
 
@@ -49,10 +57,9 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
     'Dhu al-Hijjah'
   ];
 
-  // Corrected anchor mapping: 5 September 2026 = 22 Rabi' al-Awwal 1448 AH
-  final DateTime anchorGregorian = DateTime(2026, 9, 5);
-  final int anchorHDay = 22;
-  final int anchorHMonth = 3;
+  final DateTime anchorGregorian = DateTime(2026, 9, 30);
+  final int anchorHDay = 17;
+  final int anchorHMonth = 4;
   final int anchorHYear = 1448;
 
   void _convertHijriToGregorian() {
@@ -113,26 +120,22 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
       lastDate: DateTime(2100),
       builder: (context, child) {
         return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: green,
-              onPrimary: Colors.black,
-              surface: card,
-              onSurface: whiteText,
-            ),
+          data: _isDark ? ThemeData.dark() : ThemeData.light(),
+          child: ColorFiltered(
+            colorFilter: const ColorFilter.mode(Colors.transparent, BlendMode.multiply),
+            child: child!,
           ),
-          child: child!,
         );
       },
     );
     if (picked != null) {
       setState(() {
         _selectedGregorianDate = picked;
+        _convertGregorianToHijri();
       });
     }
   }
 
-  // Beautiful popup dialog to select Hijri Date easily like a calendar picker
   void _showHijriPickerDialog() {
     int tempDay = _selectedHDay;
     int tempMonth = _selectedHMonth;
@@ -144,27 +147,30 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              backgroundColor: card2,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-              title: const Text(
+              backgroundColor: surfaceWhite,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: borderSubtle),
+              ),
+              title: Text(
                 'Select Hijri Date',
-                style: TextStyle(color: gold, fontSize: 18, fontWeight: FontWeight.w900),
+                style: TextStyle(color: primaryDeepEmerald, fontSize: 16, fontWeight: FontWeight.w700),
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Day Picker
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Day:', style: TextStyle(color: greyText, fontWeight: FontWeight.w700)),
+                      Text('Day:', style: TextStyle(color: textSecondary, fontWeight: FontWeight.w600)),
                       DropdownButton<int>(
                         value: tempDay,
-                        dropdownColor: card,
+                        dropdownColor: surfaceWhite,
                         underline: const SizedBox(),
-                        icon: const Icon(Icons.arrow_drop_down_rounded, color: green),
+                        icon: const Icon(Icons.arrow_drop_down_rounded, color: richEmerald),
                         items: List.generate(30, (i) => i + 1)
-                            .map((d) => DropdownMenuItem(value: d, child: Text('$d', style: const TextStyle(color: whiteText, fontWeight: FontWeight.w800))))
+                            .map((d) => DropdownMenuItem(value: d, child: Text('$d', style: TextStyle(color: textPrimary, fontWeight: FontWeight.w600))))
                             .toList(),
                         onChanged: (val) {
                           if (val != null) setDialogState(() => tempDay = val);
@@ -172,19 +178,18 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
                       ),
                     ],
                   ),
-                  const Divider(color: Colors.white12),
-                  // Month Picker
+                  Divider(color: borderSubtle, height: 1),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Month:', style: TextStyle(color: greyText, fontWeight: FontWeight.w700)),
+                      Text('Month:', style: TextStyle(color: textSecondary, fontWeight: FontWeight.w600)),
                       DropdownButton<int>(
                         value: tempMonth,
-                        dropdownColor: card,
+                        dropdownColor: surfaceWhite,
                         underline: const SizedBox(),
-                        icon: const Icon(Icons.arrow_drop_down_rounded, color: green),
+                        icon: const Icon(Icons.arrow_drop_down_rounded, color: richEmerald),
                         items: List.generate(12, (i) => i + 1)
-                            .map((m) => DropdownMenuItem(value: m, child: Text(hijriMonthNames[m - 1], style: const TextStyle(color: whiteText, fontWeight: FontWeight.w800))))
+                            .map((m) => DropdownMenuItem(value: m, child: Text(hijriMonthNames[m - 1], style: TextStyle(color: textPrimary, fontWeight: FontWeight.w600))))
                             .toList(),
                         onChanged: (val) {
                           if (val != null) setDialogState(() => tempMonth = val);
@@ -192,19 +197,18 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
                       ),
                     ],
                   ),
-                  const Divider(color: Colors.white12),
-                  // Year Picker
+                  Divider(color: borderSubtle, height: 1),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Year:', style: TextStyle(color: greyText, fontWeight: FontWeight.w700)),
+                      Text('Year:', style: TextStyle(color: textSecondary, fontWeight: FontWeight.w600)),
                       DropdownButton<int>(
                         value: tempYear,
-                        dropdownColor: card,
+                        dropdownColor: surfaceWhite,
                         underline: const SizedBox(),
-                        icon: const Icon(Icons.arrow_drop_down_rounded, color: green),
+                        icon: const Icon(Icons.arrow_drop_down_rounded, color: richEmerald),
                         items: [1447, 1448, 1449, 1450]
-                            .map((y) => DropdownMenuItem(value: y, child: Text('$y AH', style: const TextStyle(color: whiteText, fontWeight: FontWeight.w800))))
+                            .map((y) => DropdownMenuItem(value: y, child: Text('$y AH', style: TextStyle(color: textPrimary, fontWeight: FontWeight.w600))))
                             .toList(),
                         onChanged: (val) {
                           if (val != null) setDialogState(() => tempYear = val);
@@ -217,19 +221,25 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(color: greyText)),
+                  child: Text('Cancel', style: TextStyle(color: textInactive)),
                 ),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: green, foregroundColor: Colors.black),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: richEmerald,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                   onPressed: () {
                     setState(() {
                       _selectedHDay = tempDay;
                       _selectedHMonth = tempMonth;
                       _selectedHYear = tempYear;
+                      _convertHijriToGregorian();
                     });
                     Navigator.pop(context);
                   },
-                  child: const Text('Confirm', style: TextStyle(fontWeight: FontWeight.w900)),
+                  child: const Text('Confirm', style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
               ],
             );
@@ -240,98 +250,163 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
   }
 
   void _handleBack() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 180),
-        pageBuilder: (_, __, ___) => const MoreScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 180),
+          pageBuilder: (_, __, ___) => const MoreScreen(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      );
+    }
   }
 
   @override
   void initState() {
     super.initState();
+    _selectedGregorianDate = DateTime.now();
+
+    int diffDays = _selectedGregorianDate.difference(anchorGregorian).inDays;
+    int currentHDay = anchorHDay + diffDays;
+    int currentHMonth = anchorHMonth;
+    int currentHYear = anchorHYear;
+
+    while (currentHDay > 30 || currentHDay < 1) {
+      if (currentHDay > 30) {
+        int monthLength = (currentHMonth % 2 != 0) ? 30 : 29;
+        if (currentHDay > monthLength) {
+          currentHDay -= monthLength;
+          currentHMonth++;
+          if (currentHMonth > 12) {
+            currentHMonth = 1;
+            currentHYear++;
+          }
+        } else {
+          break;
+        }
+      } else if (currentHDay < 1) {
+        currentHMonth--;
+        if (currentHMonth < 1) {
+          currentHMonth = 12;
+          currentHYear--;
+        }
+        int prevMonthLength = (currentHMonth % 2 != 0) ? 30 : 29;
+        currentHDay += prevMonthLength;
+      }
+    }
+
+    _selectedHDay = currentHDay;
+    _selectedHMonth = currentHMonth.clamp(1, 12);
+    _selectedHYear = currentHYear;
+
     _convertHijriToGregorian();
     _convertGregorianToHijri();
   }
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBack();
-      },
-      child: Scaffold(
-        backgroundColor: background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _headerSection(),
-              _tabSelector(),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(), // Native smooth scroll
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, darkEnabled, child) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _handleBack();
+          },
+          child: Scaffold(
+            backgroundColor: appBackground,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _headerSection(),
+                  _tabSelector(),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      child: _selectedTab == 0
+                          ? _buildHijriToGregorianWidget()
+                          : _buildGregorianToHijriWidget(),
+                    ),
                   ),
-                  padding: const EdgeInsets.all(18),
-                  child: _selectedTab == 0
-                      ? _buildHijriToGregorianWidget()
-                      : _buildGregorianToHijriWidget(),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _headerSection() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 14, 20, 10),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          IconButton(
-            onPressed: _handleBack,
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: whiteText, size: 20),
-          ),
-          const SizedBox(width: 2),
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: gold.withValues(alpha: 0.08),
-              border: Border.all(color: gold.withValues(alpha: 0.6), width: 1.5),
+          GestureDetector(
+            onTap: _handleBack,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: richEmerald,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: richEmerald),
+              ),
+              child: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white, size: 18),
             ),
-            child: const Icon(Icons.swap_horiz_rounded, color: gold, size: 26),
+          ),
+          const SizedBox(width: 14),
+          // Sleek, Premium Professional Icon Container (Updated)
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [richEmerald, primaryDeepEmerald],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: richEmerald.withValues(alpha: 0.25),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.sync_alt_rounded, color: Colors.white, size: 20),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'DATE CONVERTER',
                   style: TextStyle(
-                    color: gold,
+                    color: richEmerald,
                     fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.6,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.0,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   'Hijri ↔ Gregorian',
                   style: TextStyle(
-                    color: whiteText,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
+                    color: textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ],
@@ -344,12 +419,12 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
 
   Widget _tabSelector() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: card,
+        color: surfaceWhite,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        border: Border.all(color: borderSubtle),
       ),
       child: Row(
         children: [
@@ -359,19 +434,19 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: _selectedTab == 0 ? greenDark : Colors.transparent,
+                  color: _selectedTab == 0 ? secondarySurface : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: _selectedTab == 0
-                      ? Border.all(color: green.withValues(alpha: 0.5))
+                      ? Border.all(color: richEmerald)
                       : null,
                 ),
                 child: Text(
                   'Hijri → Gregorian',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: _selectedTab == 0 ? green : greyText,
+                    color: _selectedTab == 0 ? richEmerald : textSecondary,
                     fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -383,19 +458,19 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  color: _selectedTab == 1 ? greenDark : Colors.transparent,
+                  color: _selectedTab == 1 ? secondarySurface : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: _selectedTab == 1
-                      ? Border.all(color: green.withValues(alpha: 0.5))
+                      ? Border.all(color: richEmerald)
                       : null,
                 ),
                 child: Text(
                   'Gregorian → Hijri',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: _selectedTab == 1 ? green : greyText,
+                    color: _selectedTab == 1 ? richEmerald : textSecondary,
                     fontSize: 12,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -416,9 +491,16 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: card,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+            color: surfaceWhite,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderSubtle),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -426,44 +508,44 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
               const Text(
                 'Select Hijri Date',
                 style: TextStyle(
-                    color: gold, fontSize: 14, fontWeight: FontWeight.w900),
+                    color: richEmerald, fontSize: 14, fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 16),
-              // Interactive Picker Button
+              const SizedBox(height: 14),
               GestureDetector(
                 onTap: _showHijriPickerDialog,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: card2,
+                    color: secondarySurface,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    border: Border.all(color: borderSubtle),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         formattedHijri,
-                        style: const TextStyle(
-                          color: whiteText,
+                        style: TextStyle(
+                          color: textPrimary,
                           fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const Icon(Icons.calendar_month_rounded, color: gold, size: 20),
+                      const Icon(Icons.calendar_month_rounded, color: richEmerald, size: 20),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _convertHijriToGregorian,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: green,
-                    foregroundColor: Colors.black,
+                    backgroundColor: richEmerald,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -471,31 +553,38 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
                   ),
                   child: const Text(
                     'Convert to Gregorian',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         if (_gregorianResult.isNotEmpty)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: card,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: green.withValues(alpha: 0.4)),
+              color: surfaceWhite,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderSubtle),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       'Corresponding Gregorian Date',
-                      style: TextStyle(color: greyText, fontSize: 11, fontWeight: FontWeight.w700),
+                      style: TextStyle(color: textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(width: 8),
                     FutureBuilder<bool>(
@@ -507,7 +596,7 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
                           constraints: const BoxConstraints(),
                           icon: Icon(
                             isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                            color: isFav ? Colors.redAccent : greyText,
+                            color: isFav ? Colors.redAccent : textInactive,
                             size: 18,
                           ),
                           onPressed: () async {
@@ -525,14 +614,14 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   _gregorianResult,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: green,
+                    color: richEmerald,
                     fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
@@ -552,9 +641,16 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
         Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            color: card,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+            color: surfaceWhite,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderSubtle),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -562,43 +658,44 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
               const Text(
                 'Select Gregorian Date',
                 style: TextStyle(
-                    color: gold, fontSize: 14, fontWeight: FontWeight.w900),
+                    color: richEmerald, fontSize: 14, fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               GestureDetector(
                 onTap: _pickGregorianDate,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
-                    color: card2,
+                    color: secondarySurface,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    border: Border.all(color: borderSubtle),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         formattedDate,
-                        style: const TextStyle(
-                          color: whiteText,
+                        style: TextStyle(
+                          color: textPrimary,
                           fontSize: 14,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const Icon(Icons.calendar_month_rounded, color: gold, size: 20),
+                      const Icon(Icons.calendar_month_rounded, color: richEmerald, size: 20),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: _convertGregorianToHijri,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: green,
-                    foregroundColor: Colors.black,
+                    backgroundColor: richEmerald,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -606,31 +703,38 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
                   ),
                   child: const Text(
                     'Convert to Hijri',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
         if (_hijriResult.isNotEmpty)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: card,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: gold.withValues(alpha: 0.4)),
+              color: surfaceWhite,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: borderSubtle),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                    Text(
                       'Corresponding Hijri Date',
-                      style: TextStyle(color: greyText, fontSize: 11, fontWeight: FontWeight.w700),
+                      style: TextStyle(color: textSecondary, fontSize: 11, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(width: 8),
                     FutureBuilder<bool>(
@@ -642,7 +746,7 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
                           constraints: const BoxConstraints(),
                           icon: Icon(
                             isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                            color: isFav ? Colors.redAccent : greyText,
+                            color: isFav ? Colors.redAccent : textInactive,
                             size: 18,
                           ),
                           onPressed: () async {
@@ -660,14 +764,14 @@ class _HijriConverterScreenState extends State<HijriConverterScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   _hijriResult,
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: gold,
+                    color: richEmerald,
                     fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],

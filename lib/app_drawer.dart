@@ -1,4 +1,4 @@
-import 'dart:ui';
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -23,10 +23,34 @@ class AppDrawer extends StatelessWidget {
   final VoidCallback? onClose;
   const AppDrawer({super.key, this.onClose});
 
-  static const Color whiteText = Color(0xFFFFFFFF);
-  static const Color greyText = Color(0xFFCFD8DC);
-  static const Color green = Color(0xFF00E676);
-  static const Color gold = Color(0xFFFFD700);
+  // ==========================================================
+  // DYNAMIC PALETTE BASED ON DARK MODE STATE
+  // ==========================================================
+  static bool get _isDark => ThemeService.isDarkMode.value;
+
+  static Color get appBackground => _isDark ? const Color(0xFF0B1511) : const Color(0xFFF7F6F1);
+
+  // Fully Transparent Glass Surface taake background image clearly show ho
+  static Color get glassSurface => _isDark ? const Color(0xFF14221C).withValues(alpha: 0.65) : Colors.white.withValues(alpha: 0.45);
+  static Color get secondarySurface => _isDark ? const Color(0xFF192B23).withValues(alpha: 0.75) : const Color(0xFFE7F0EB).withValues(alpha: 0.60);
+
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
+
+  static Color get textPrimary => _isDark ? const Color(0xFFF4F6F2) : const Color(0xFF1D2924);
+  static Color get textSecondary => _isDark ? const Color(0xFFAAB6AF) : const Color(0xFF4A5A53);
+  static Color get textInactive => _isDark ? const Color(0xFF718079) : const Color(0xFF718079);
+  static Color get borderSubtle => _isDark ? const Color(0xFF24332B) : const Color(0xFFC5D5CD);
+
+  static Color get bgDark => appBackground;
+  static Color get surface => glassSurface;
+  static Color get elevatedSurface => secondarySurface;
+  static const Color emerald = richEmerald;
+  static const Color softMint = softEmerald;
+  static Color get textLight => textPrimary;
+  static Color get textMuted => textSecondary;
 
   void _navigateTo(BuildContext context, Widget screen) {
     if (onClose != null) onClose!();
@@ -74,28 +98,30 @@ class AppDrawer extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0E1612),
+        backgroundColor: _isDark ? const Color(0xFF14221C).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: gold.withOpacity(0.35), width: 1.2),
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: borderSubtle, width: 1.0),
         ),
         title: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: gold.withOpacity(0.15),
+                color: secondarySurface,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.star_rounded, color: gold, size: 36),
+              child: const Icon(Icons.star_rounded, color: mutedGold, size: 36),
             ),
-            const SizedBox(height: 12),
-            const Text(
+            const SizedBox(height: 16),
+            Text(
               'Enjoying Prayer Times?',
               style: TextStyle(
-                color: whiteText,
+                color: textPrimary,
                 fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
               ),
               textAlign: TextAlign.center,
             ),
@@ -104,46 +130,50 @@ class AppDrawer extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Your 5-star rating supports future development and helps reach more Muslims worldwide.',
-              style: TextStyle(color: greyText, fontSize: 13, height: 1.45),
+              style: TextStyle(color: textSecondary, fontSize: 13, height: 1.45),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(
                 5,
                     (index) => const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 3),
-                  child: Icon(Icons.star_rounded, color: gold, size: 28),
+                  padding: EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(Icons.star_rounded, color: mutedGold, size: 32),
                 ),
               ),
             ),
           ],
         ),
-        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         actions: [
           Row(
             children: [
               Expanded(
                 child: TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Later',
-                      style: TextStyle(color: greyText, fontSize: 13)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text('Later',
+                      style: TextStyle(color: textInactive, fontSize: 14, fontWeight: FontWeight.w500)),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(
                 flex: 2,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: green,
-                    foregroundColor: Colors.black,
+                    backgroundColor: richEmerald,
+                    foregroundColor: Colors.white,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   onPressed: () {
@@ -152,7 +182,7 @@ class AppDrawer extends StatelessWidget {
                   },
                   child: const Text(
                     'Rate 5 Stars',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                   ),
                 ),
               ),
@@ -168,29 +198,30 @@ class AppDrawer extends StatelessWidget {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0E1612),
+        backgroundColor: _isDark ? const Color(0xFF14221C).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: Colors.white.withOpacity(0.15)),
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: borderSubtle),
         ),
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: const Color(0xFF29B6F6).withOpacity(0.18),
+                color: secondarySurface,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.mosque_rounded,
-                  color: Color(0xFF29B6F6), size: 22),
+              child: const Icon(Icons.mosque_rounded, color: richEmerald, size: 22),
             ),
-            const SizedBox(width: 10),
-            const Text(
+            const SizedBox(width: 12),
+            Text(
               'About App',
               style: TextStyle(
-                color: whiteText,
+                color: textPrimary,
                 fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
               ),
             ),
           ],
@@ -202,42 +233,48 @@ class AppDrawer extends StatelessWidget {
             const Text(
               'Prayer Times & Islamic Suite',
               style: TextStyle(
-                color: gold,
-                fontWeight: FontWeight.bold,
+                color: mutedGold,
+                fontWeight: FontWeight.w600,
                 fontSize: 15,
               ),
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 6),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              margin: const EdgeInsets.only(top: 4, bottom: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.08),
+                color: secondarySurface,
                 borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: borderSubtle),
               ),
               child: const Text(
                 'v1.0.0 • Stable Release',
-                style: TextStyle(color: greyText, fontSize: 11),
+                style: TextStyle(color: richEmerald, fontSize: 11, fontWeight: FontWeight.w500),
               ),
             ),
-            const Text(
+            const SizedBox(height: 12),
+            Text(
               'A complete Islamic companion providing accurate prayer notifications, Holy Quran with recitation, real-time Qibla compass, Tasbih counter, Daily Duas, Sahih Hadith, and essential Islamic utilities.',
-              style: TextStyle(color: whiteText, fontSize: 12.5, height: 1.45),
+              style: TextStyle(color: textSecondary, fontSize: 13, height: 1.5),
             ),
           ],
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: green,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: richEmerald,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
             ),
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close',
-                style: TextStyle(
-                    color: Colors.black, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -246,429 +283,325 @@ class AppDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double screenWidth = MediaQuery.of(context).size.width;
-    final double menuWidth = screenWidth * 0.74;
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, darkEnabled, child) {
+        final double screenWidth = MediaQuery.of(context).size.width;
+        final double menuWidth = screenWidth * 0.76;
 
-    // Structured into clean, intuitive sections
-    final List<_DrawerSectionData> sections = [
-      _DrawerSectionData(
-        title: 'Daily Worship',
-        items: [
-          _DrawerItemData(
-            icon: Icons.menu_book_rounded,
-            title: 'Quran Kareem',
-            subtitle: 'Read & Listen',
-            color: const Color(0xFFFF9E1B),
-            screen: const QuranScreen(),
+        final List<_DrawerSectionData> sections = [
+          _DrawerSectionData(
+            title: 'Daily Worship',
+            items: [
+              _DrawerItemData(
+                icon: Icons.menu_book_rounded,
+                title: 'Quran Kareem',
+                subtitle: 'Read & Listen',
+                color: richEmerald,
+                screen: const QuranScreen(),
+              ),
+              _DrawerItemData(
+                icon: Icons.fingerprint_rounded,
+                customIcon: const LiveTasbeehIcon(
+                  size: 20,
+                  color: richEmerald,
+                  animate: true,
+                ),
+                title: 'Tasbih',
+                subtitle: 'Digital Dhikr Counter',
+                color: richEmerald,
+                screen: const TasbeehScreen(),
+              ),
+              _DrawerItemData(
+                icon: Icons.explore_rounded,
+                title: 'Qibla Finder',
+                subtitle: 'Accurate Compass',
+                color: richEmerald,
+                screen: const QiblaScreen(),
+              ),
+              _DrawerItemData(
+                icon: Icons.calendar_month_rounded,
+                title: 'Islamic Calendar',
+                subtitle: 'Hijri Dates & Events',
+                color: mutedGold,
+                screen: const IslamicCalendarScreen(),
+              ),
+            ],
           ),
-          _DrawerItemData(
-            icon: Icons.fingerprint_rounded,
-            customIcon: const LiveTasbeehIcon(
-              size: 21,
-              color: Color(0xFF00E676),
-              animate: true,
-            ),
-            title: 'Tasbih',
-            subtitle: 'Digital Dhikr Counter',
-            color: const Color(0xFF00E676),
-            screen: const TasbeehScreen(),
+          _DrawerSectionData(
+            title: 'Knowledge & Dhikr',
+            items: [
+              _DrawerItemData(
+                icon: Icons.favorite_rounded,
+                title: 'Daily Duas',
+                subtitle: 'Morning & Evening Duas',
+                color: richEmerald,
+                screen: const DuasScreen(),
+              ),
+              _DrawerItemData(
+                icon: Icons.auto_awesome_rounded,
+                title: '99 Names',
+                subtitle: 'Asma ul Husna',
+                color: mutedGold,
+                screen: const AsmaUlHusnaScreen(),
+              ),
+              _DrawerItemData(
+                icon: Icons.auto_stories_rounded,
+                title: 'Sahih Hadith',
+                subtitle: 'Authentic Collections',
+                color: richEmerald,
+                screen: const HadithScreen(),
+              ),
+              _DrawerItemData(
+                icon: Icons.article_rounded,
+                title: 'Islamic Articles',
+                subtitle: 'Read & Learn',
+                color: richEmerald,
+                screen: const IslamicArticlesScreen(),
+              ),
+            ],
           ),
-          _DrawerItemData(
-            icon: Icons.explore_rounded,
-            title: 'Qibla Finder',
-            subtitle: 'Accurate Compass',
-            color: const Color(0xFF29B6F6),
-            screen: const QiblaScreen(),
+          _DrawerSectionData(
+            title: 'Utilities & Tools',
+            items: [
+              _DrawerItemData(
+                icon: Icons.calculate_rounded,
+                title: 'Islamic Calculator',
+                subtitle: 'Zakat, Inheritance & More',
+                color: richEmerald,
+                screen: const IslamicCalculatorScreen(),
+              ),
+              _DrawerItemData(
+                icon: Icons.mosque_rounded,
+                title: 'Nearby Mosques',
+                subtitle: 'Locate on Live Map',
+                color: richEmerald,
+                screen: const NearbyMosquesScreen(),
+              ),
+              _DrawerItemData(
+                icon: Icons.bookmark_rounded,
+                title: 'Saved Favorites',
+                subtitle: 'Your Bookmarked Ayahs & Duas',
+                color: richEmerald,
+                screen: const FavoritesScreen(fromMore: false),
+              ),
+              _DrawerItemData(
+                icon: Icons.edit_note_rounded,
+                title: 'Islamic Notes',
+                subtitle: 'Personal Islamic Journal',
+                color: richEmerald,
+                screen: const NotesScreen(fromMore: false),
+              ),
+              _DrawerItemData(
+                icon: Icons.swap_horiz_rounded,
+                title: 'Date Converter',
+                subtitle: 'Hijri ↔ Gregorian',
+                color: richEmerald,
+                screen: const HijriConverterScreen(),
+              ),
+              _DrawerItemData(
+                icon: Icons.grid_view_rounded,
+                title: 'More Features',
+                subtitle: 'Explore All Tools',
+                color: mutedGold,
+                screen: const MoreScreen(),
+              ),
+            ],
           ),
-          _DrawerItemData(
-            icon: Icons.calendar_month_rounded,
-            title: 'Islamic Calendar',
-            subtitle: 'Hijri Dates & Events',
-            color: const Color(0xFFFFB300),
-            screen: const IslamicCalendarScreen(),
-          ),
-        ],
-      ),
-      _DrawerSectionData(
-        title: 'Knowledge & Dhikr',
-        items: [
-          _DrawerItemData(
-            icon: Icons.favorite_rounded,
-            title: 'Daily Duas',
-            subtitle: 'Morning & Evening Duas',
-            color: const Color(0xFFFF4081),
-            screen: const DuasScreen(),
-          ),
-          _DrawerItemData(
-            icon: Icons.auto_awesome_rounded,
-            title: '99 Names',
-            subtitle: 'Asma ul Husna',
-            color: const Color(0xFFFFD700),
-            screen: const AsmaUlHusnaScreen(),
-          ),
-          _DrawerItemData(
-            icon: Icons.auto_stories_rounded,
-            title: 'Sahih Hadith',
-            subtitle: 'Authentic Collections',
-            color: const Color(0xFFFF7043),
-            screen: const HadithScreen(),
-          ),
-          _DrawerItemData(
-            icon: Icons.article_rounded,
-            title: 'Islamic Articles',
-            subtitle: 'Read & Learn',
-            color: const Color(0xFF26A69A),
-            screen: const IslamicArticlesScreen(),
-          ),
-        ],
-      ),
-      _DrawerSectionData(
-        title: 'Utilities & Tools',
-        items: [
-          _DrawerItemData(
-            icon: Icons.calculate_rounded,
-            title: 'Islamic Calculator',
-            subtitle: 'Zakat, Inheritance & More',
-            color: const Color(0xFF00E5FF),
-            screen: const IslamicCalculatorScreen(),
-          ),
-          _DrawerItemData(
-            icon: Icons.mosque_rounded,
-            title: 'Nearby Mosques',
-            subtitle: 'Locate on Live Map',
-            color: const Color(0xFF43A047),
-            screen: const NearbyMosquesScreen(),
-          ),
-          _DrawerItemData(
-            icon: Icons.bookmark_rounded,
-            title: 'Saved Favorites',
-            subtitle: 'Your Bookmarked Ayahs & Duas',
-            color: const Color(0xFFFF5252),
-            screen: const FavoritesScreen(fromMore: false),
-          ),
-          _DrawerItemData(
-            icon: Icons.edit_note_rounded,
-            title: 'Islamic Notes',
-            subtitle: 'Personal Islamic Journal',
-            color: const Color(0xFFFFCA28),
-            screen: const NotesScreen(fromMore: false),
-          ),
-          _DrawerItemData(
-            icon: Icons.swap_horiz_rounded,
-            title: 'Date Converter',
-            subtitle: 'Hijri ↔ Gregorian',
-            color: const Color(0xFFAB47BC),
-            screen: const HijriConverterScreen(),
-          ),
-          _DrawerItemData(
-            icon: Icons.apps_rounded,
-            title: 'More Features',
-            subtitle: 'Explore All Tools',
-            color: const Color(0xFF26E17A),
-            screen: const MoreScreen(),
-          ),
-        ],
-      ),
-    ];
+        ];
 
-    int overallIndex = 0;
+        int overallIndex = 0;
 
-    return RepaintBoundary(
-      child: Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: const Color(0xFF060B08),
-        child: Stack(
-          children: [
-            // 1. Background Image (Masjid Nabawi)
-            Positioned.fill(
-              child: Image.asset(
-                'assets/images/Madina 42.jpg',
-                fit: BoxFit.cover,
-                alignment: Alignment.centerRight,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  color: const Color(0xFF0A0F0C),
-                  child: const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.mosque_rounded, color: gold, size: 48),
-                        SizedBox(height: 8),
-                        Text(
-                          'Ensure image is assets/images/Madina 42.jpg',
-                          style: TextStyle(color: greyText, fontSize: 11),
-                        ),
-                      ],
+        return RepaintBoundary(
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            color: Colors.transparent,
+            child: Stack(
+              children: [
+                // 1. Background Image (Madina 42.jpg) - Ab ye Drawer ke peechhe bilkul saaf dikhegi
+                Positioned.fill(
+                  child: Image.asset(
+                    'assets/images/Madina 42.jpg',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: appBackground,
                     ),
                   ),
                 ),
-              ),
-            ),
 
-            // 2. High-Contrast Directional Overlay
-            // Darkens the menu side for readability while preserving right side transparency
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    stops: const [0.0, 0.65, 1.0],
-                    colors: [
-                      const Color(0xFF050A07).withOpacity(0.95),
-                      const Color(0xFF09120D).withOpacity(0.82),
-                      Colors.black.withOpacity(0.35),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // 3. Frosted Glass Drawer Container
-            SizedBox(
-              width: menuWidth,
-              child: ClipRect(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border(
-                        right: BorderSide(
-                          color: Colors.white.withOpacity(0.08),
-                          width: 1,
+                // 2. Main Drawer Container with Frosted Glassmorphism Effect
+                SizedBox(
+                  width: menuWidth,
+                  child: ClipRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 16.0, sigmaY: 16.0), // Glass blur
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: glassSurface, // Semi-transparent glass white/dark
+                          border: Border(
+                            right: BorderSide(
+                              color: borderSubtle,
+                              width: 1,
+                            ),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 20,
+                              offset: const Offset(6, 0),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                    child: SafeArea(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Top Executive Header
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(14, 12, 12, 10),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        gold.withOpacity(0.3),
-                                        green.withOpacity(0.12),
-                                      ],
-                                    ),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: gold.withOpacity(0.75),
-                                      width: 1.5,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: gold.withOpacity(0.35),
-                                        blurRadius: 10,
-                                        spreadRadius: 1,
+                        child: SafeArea(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Top Executive Header
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 46,
+                                      height: 46,
+                                      decoration: BoxDecoration(
+                                        color: secondarySurface,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: borderSubtle),
                                       ),
-                                    ],
-                                  ),
-                                  child: const Icon(Icons.mosque_rounded,
-                                      color: gold, size: 22),
-                                ),
-                                const SizedBox(width: 11),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                    children: [
-                                      const Text(
-                                        'Prayer Times',
-                                        style: TextStyle(
-                                          color: whiteText,
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w900,
-                                          letterSpacing: 0.3,
-                                          shadows: [
-                                            Shadow(
-                                              color: Colors.black,
-                                              blurRadius: 6,
-                                            )
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Row(
+                                      child: const Icon(Icons.mosque_rounded, color: richEmerald, size: 24),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Container(
-                                            width: 5,
-                                            height: 5,
-                                            decoration: const BoxDecoration(
-                                              color: green,
-                                              shape: BoxShape.circle,
+                                          Text(
+                                            'Prayer Times',
+                                            style: TextStyle(
+                                              color: textPrimary,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w700,
+                                              letterSpacing: -0.3,
                                             ),
                                           ),
-                                          const SizedBox(width: 5),
+                                          const SizedBox(height: 4),
                                           Text(
-                                            'ISLAMIC SUITE',
+                                            'Islamic Suite',
                                             style: TextStyle(
-                                              color: gold.withOpacity(0.9),
-                                              fontSize: 9.5,
-                                              fontWeight: FontWeight.w800,
-                                              letterSpacing: 1.1,
+                                              color: textSecondary,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.info_outline_rounded,
+                                        color: textSecondary,
+                                        size: 22,
+                                      ),
+                                      splashRadius: 20,
+                                      onPressed: () => _showAboutDialog(context),
+                                    ),
+                                  ],
                                 ),
-                                IconButton(
-                                  icon: Icon(
-                                    Icons.info_outline_rounded,
-                                    color: Colors.white.withOpacity(0.55),
-                                    size: 20,
-                                  ),
-                                  splashRadius: 18,
-                                  onPressed: () => _showAboutDialog(context),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          Container(
-                            height: 1,
-                            margin: const EdgeInsets.symmetric(horizontal: 14),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  gold.withOpacity(0.4),
-                                  Colors.white.withOpacity(0.08),
-                                  Colors.transparent,
-                                ],
                               ),
-                            ),
-                          ),
 
-                          // Scrollable Options List
-                          Expanded(
-                            child: ListView(
-                              physics: const BouncingScrollPhysics(),
-                              padding: const EdgeInsets.fromLTRB(4, 8, 4, 16),
-                              children: [
-                                for (final section in sections) ...[
-                                  // Category Section Header
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                        14, 12, 14, 6),
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 3,
-                                          height: 11,
-                                          decoration: BoxDecoration(
-                                            color: gold,
-                                            borderRadius:
-                                            BorderRadius.circular(2),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: gold.withOpacity(0.5),
-                                                blurRadius: 4,
-                                              )
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 7),
-                                        Text(
+                              Container(
+                                height: 1,
+                                margin: const EdgeInsets.symmetric(horizontal: 16),
+                                color: borderSubtle,
+                              ),
+
+                              // Scrollable Options List
+                              Expanded(
+                                child: ListView(
+                                  physics: const BouncingScrollPhysics(),
+                                  padding: const EdgeInsets.fromLTRB(8, 12, 8, 20),
+                                  children: [
+                                    for (final section in sections) ...[
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                                        child: Text(
                                           section.title.toUpperCase(),
                                           style: TextStyle(
-                                            color:
-                                            Colors.white.withOpacity(0.65),
-                                            fontSize: 9.5,
+                                            color: textPrimary,
+                                            fontSize: 11,
                                             fontWeight: FontWeight.w800,
-                                            letterSpacing: 1.1,
+                                            letterSpacing: 0.8,
                                           ),
                                         ),
-                                      ],
+                                      ),
+                                      for (final item in section.items)
+                                        _PremiumMenuItemTile(
+                                          index: overallIndex++,
+                                          icon: item.icon,
+                                          customIcon: item.customIcon,
+                                          title: item.title,
+                                          subtitle: item.subtitle,
+                                          color: item.color,
+                                          onTap: () => _navigateTo(context, item.screen),
+                                        ),
+                                    ],
+
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                                      child: Divider(color: borderSubtle, height: 1),
                                     ),
-                                  ),
-                                  // Section Items
-                                  for (final item in section.items)
-                                    _AnimatedMenuItemTile(
+
+                                    _PremiumMenuItemTile(
                                       index: overallIndex++,
-                                      icon: item.icon,
-                                      customIcon: item.customIcon,
-                                      title: item.title,
-                                      subtitle: item.subtitle,
-                                      color: item.color,
-                                      onTap: () =>
-                                          _navigateTo(context, item.screen),
+                                      icon: Icons.settings_rounded,
+                                      title: 'Settings',
+                                      subtitle: 'App Preferences',
+                                      color: textSecondary,
+                                      onTap: () => _navigateTo(context, const SettingsScreen()),
                                     ),
-                                ],
 
-                                // Bottom Actions Divider
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                      14, 14, 14, 10),
-                                  child: Divider(
-                                    color: Colors.white.withOpacity(0.12),
-                                    height: 1,
-                                  ),
-                                ),
-
-                                // Settings Tile
-                                _AnimatedMenuItemTile(
-                                  index: overallIndex++,
-                                  icon: Icons.settings_rounded,
-                                  title: 'Settings',
-                                  subtitle: 'App Preferences & Notifications',
-                                  color: const Color(0xFF90A4AE),
-                                  onTap: () => _navigateTo(
-                                      context, const SettingsScreen()),
-                                ),
-
-                                // Rate App Golden Tile
-                                _AnimatedMenuItemTile(
-                                  index: overallIndex++,
-                                  icon: Icons.star_rounded,
-                                  title: 'Rate App',
-                                  subtitle: 'Support Us with 5 Stars',
-                                  color: const Color(0xFFFFD700),
-                                  isHighlighted: true,
-                                  onTap: () => _openPlayStoreRating(context),
-                                ),
-
-                                const SizedBox(height: 12),
-                                Center(
-                                  child: Text(
-                                    'v1.0.0 • Made with ❤️ for Ummah',
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.35),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
+                                    _PremiumMenuItemTile(
+                                      index: overallIndex++,
+                                      icon: Icons.star_rounded,
+                                      title: 'Rate App',
+                                      subtitle: 'Support Us with 5 Stars',
+                                      color: mutedGold,
+                                      isHighlighted: true,
+                                      onTap: () => _openPlayStoreRating(context),
                                     ),
-                                  ),
+
+                                    const SizedBox(height: 24),
+                                    Center(
+                                      child: Text(
+                                        'v1.0.0 • Made with ❤️ for Ummah',
+                                        style: TextStyle(
+                                          color: textSecondary,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
-
-// ==========================================================
-// DATA MODELS
-// ==========================================================
 
 class _DrawerSectionData {
   final String title;
@@ -694,11 +627,7 @@ class _DrawerItemData {
   });
 }
 
-// ==========================================================
-// ULTRA-PREMIUM ANIMATED GLASS TILE
-// ==========================================================
-
-class _AnimatedMenuItemTile extends StatefulWidget {
+class _PremiumMenuItemTile extends StatefulWidget {
   final int index;
   final IconData icon;
   final Widget? customIcon;
@@ -708,7 +637,7 @@ class _AnimatedMenuItemTile extends StatefulWidget {
   final VoidCallback onTap;
   final bool isHighlighted;
 
-  const _AnimatedMenuItemTile({
+  const _PremiumMenuItemTile({
     required this.index,
     required this.icon,
     this.customIcon,
@@ -720,190 +649,96 @@ class _AnimatedMenuItemTile extends StatefulWidget {
   });
 
   @override
-  State<_AnimatedMenuItemTile> createState() => _AnimatedMenuItemTileState();
+  State<_PremiumMenuItemTile> createState() => _PremiumMenuItemTileState();
 }
 
-class _AnimatedMenuItemTileState extends State<_AnimatedMenuItemTile> {
+class _PremiumMenuItemTileState extends State<_PremiumMenuItemTile> {
   bool _isPressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(
-          milliseconds: (180 + (widget.index * 22)).clamp(180, 420)),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(-18 * (1 - value), 0),
-          child: Opacity(
-            opacity: value,
-            child: child,
+    final bool isDark = ThemeService.isDarkMode.value;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) => setState(() => _isPressed = false),
+        onTapCancel: () => setState(() => _isPressed = false),
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: _isPressed
+                ? widget.color.withValues(alpha: 0.12)
+                : widget.isHighlighted
+                ? AppDrawer.secondarySurface
+                : (isDark ? const Color(0xFF14221C).withValues(alpha: 0.45) : Colors.white.withValues(alpha: 0.35)),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _isPressed
+                  ? widget.color.withValues(alpha: 0.3)
+                  : widget.isHighlighted
+                  ? widget.color.withValues(alpha: 0.3)
+                  : AppDrawer.borderSubtle.withValues(alpha: 0.6),
+              width: 1.0,
+            ),
           ),
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
-        child: GestureDetector(
-          onTapDown: (_) => setState(() => _isPressed = true),
-          onTapUp: (_) => setState(() => _isPressed = false),
-          onTapCancel: () => setState(() => _isPressed = false),
-          onTap: widget.onTap,
-          child: AnimatedScale(
-            scale: _isPressed ? 0.965 : 1.0,
-            duration: const Duration(milliseconds: 110),
-            curve: Curves.easeOutCubic,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7.5),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: _isPressed
-                      ? [
-                    widget.color.withOpacity(0.32),
-                    widget.color.withOpacity(0.12),
-                  ]
-                      : widget.isHighlighted
-                      ? [
-                    widget.color.withOpacity(0.16),
-                    Colors.white.withOpacity(0.03),
-                  ]
-                      : [
-                    Colors.white.withOpacity(0.075),
-                    Colors.white.withOpacity(0.02),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppDrawer.secondarySurface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppDrawer.borderSubtle),
+                ),
+                child: Center(
+                  child: widget.customIcon ??
+                      Icon(widget.icon, color: widget.color, size: 20),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: TextStyle(
+                        color: AppDrawer.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.subtitle,
+                      style: TextStyle(
+                        color: AppDrawer.textSecondary,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: _isPressed
-                      ? widget.color.withOpacity(0.85)
-                      : widget.isHighlighted
-                      ? widget.color.withOpacity(0.4)
-                      : Colors.white.withOpacity(0.10),
-                  width: 1.1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.28),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                  if (_isPressed || widget.isHighlighted)
-                    BoxShadow(
-                      color: widget.color.withOpacity(widget.isHighlighted ? 0.15 : 0.32),
-                      blurRadius: 12,
-                      spreadRadius: 0.5,
-                    ),
-                ],
               ),
-              child: Row(
-                children: [
-                  // High-End Glowing Squircle Icon
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          widget.color.withOpacity(0.28),
-                          widget.color.withOpacity(0.08),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(11),
-                      border: Border.all(
-                        color: widget.color.withOpacity(0.50),
-                        width: 1.1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: widget.color.withOpacity(0.30),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: widget.customIcon ??
-                          Icon(widget.icon, color: widget.color, size: 20),
-                    ),
-                  ),
-                  const SizedBox(width: 11),
-
-                  // Title + Subtitle
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.15,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black54,
-                                blurRadius: 4,
-                                offset: Offset(0, 1),
-                              )
-                            ],
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          widget.subtitle,
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.68),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w400,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(width: 6),
-
-                  // Sleek Circular Arrow Pill
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 22,
-                    height: 22,
-                    decoration: BoxDecoration(
-                      color: _isPressed
-                          ? widget.color.withOpacity(0.22)
-                          : Colors.white.withOpacity(0.06),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: _isPressed
-                            ? widget.color.withOpacity(0.6)
-                            : Colors.white.withOpacity(0.08),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.chevron_right_rounded,
-                      color: _isPressed
-                          ? widget.color
-                          : Colors.white.withOpacity(0.55),
-                      size: 15,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: _isPressed ? widget.color : AppDrawer.textSecondary.withValues(alpha: 0.7),
+                size: 20,
               ),
-            ),
+            ],
           ),
         ),
       ),

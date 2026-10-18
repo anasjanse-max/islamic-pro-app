@@ -1,9 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:ui';
 
+import 'favorites_service.dart';
 import 'more_screen.dart';
+import 'settings_screen.dart';
 
 class DuaItem {
   final String title;
@@ -29,14 +31,24 @@ class DuasScreen extends StatefulWidget {
 }
 
 class _DuasScreenState extends State<DuasScreen> {
-  static const Color background = Color(0xFF000000);
-  static const Color cardBg = Color(0xFF0A0F0C);
-  static const Color green = Color(0xFF26E17A);
-  static const Color greenDark = Color(0xFF0C3323);
-  static const Color gold = Color(0xFFE8B63D);
-  static const Color whiteText = Color(0xFFF4F6F5);
-  static const Color greyText = Color(0xFF98A19D);
-  static const Color borderColor = Color(0xFF1A221D);
+  // ==========================================================
+  // DYNAMIC PALETTE BASED ON DARK MODE STATE
+  // ==========================================================
+  bool get _isDark => ThemeService.isDarkMode.value;
+
+  Color get appBackground => _isDark ? const Color(0xFF0B1511) : const Color(0xFFF7F6F1);
+  Color get surfaceWhite => _isDark ? const Color(0xFF14221C) : const Color(0xFFFFFFFF);
+  Color get secondarySurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
+
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
+
+  Color get textPrimary => _isDark ? const Color(0xFFF4F6F2) : const Color(0xFF1D2924);
+  Color get textSecondary => _isDark ? const Color(0xFFAAB6AF) : const Color(0xFF66736D);
+  Color get textInactive => _isDark ? const Color(0xFF718079) : const Color(0xFF718079);
+  Color get borderSubtle => _isDark ? const Color(0xFF24332B) : const Color(0xFFD5DFDA);
 
   String selectedCategory = 'Sab';
 
@@ -109,299 +121,347 @@ class _DuasScreenState extends State<DuasScreen> {
   ];
 
   void _handleBack() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 200),
-        pageBuilder: (_, __, ___) => const MoreScreen(),
-        transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
-      ),
-    );
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 180),
+          pageBuilder: (_, __, ___) => const MoreScreen(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredDuas = selectedCategory == 'Sab'
-        ? duasList
-        : duasList.where((d) => d.category == selectedCategory).toList();
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, darkEnabled, child) {
+        final filteredDuas = selectedCategory == 'Sab'
+            ? duasList
+            : duasList.where((d) => d.category == selectedCategory).toList();
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBack();
-      },
-      child: Scaffold(
-        backgroundColor: background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // Custom Header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: _handleBack,
-                      child: Container(
-                        width: 38,
-                        height: 38,
-                        decoration: BoxDecoration(
-                          color: cardBg,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: borderColor),
-                        ),
-                        child: const Icon(Icons.arrow_back_ios_new_rounded,
-                            color: whiteText, size: 15),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Masnoon Duain',
-                            style: TextStyle(
-                              color: whiteText,
-                              fontSize: 19,
-                              fontWeight: FontWeight.w900,
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _handleBack();
+          },
+          child: Scaffold(
+            backgroundColor: appBackground,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  // Custom Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    child: Row(
+                      children: [
+                        GestureDetector(
+                          onTap: _handleBack,
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: richEmerald, // Premium Action Color
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: richEmerald),
                             ),
-                          ),
-                          SizedBox(height: 1),
-                          Text(
-                            'Ruhani Sukoon, Har Din Ke Liye',
-                            style: TextStyle(color: greyText, fontSize: 11),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: cardBg,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: borderColor),
-                      ),
-                      child: const Icon(Icons.search_rounded, color: whiteText, size: 18),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Horizontal Category Filter Chips
-              SizedBox(
-                height: 48,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: categories.length,
-                  itemBuilder: (context, index) {
-                    final cat = categories[index];
-                    final isSelected = selectedCategory == cat;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(cat),
-                        selected: isSelected,
-                        selectedColor: green,
-                        backgroundColor: cardBg,
-                        labelStyle: TextStyle(
-                          color: isSelected ? Colors.black : whiteText,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12.5,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: BorderSide(
-                            color: isSelected ? green : borderColor,
+                            child: const Icon(Icons.arrow_back_ios_new_rounded,
+                                color: Colors.white, size: 18),
                           ),
                         ),
-                        onSelected: (bool selected) {
-                          setState(() {
-                            selectedCategory = cat;
-                          });
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 6),
-
-              // Duas List
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                  itemCount: filteredDuas.length,
-                  itemBuilder: (context, index) {
-                    final dua = filteredDuas[index];
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cardBg,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: borderColor, width: 1.2),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Top row: Title & Category badge + Favorite
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                child: Text(
-                                  dua.title,
-                                  style: const TextStyle(
-                                    color: whiteText,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                              Text(
+                                'Masnoon Duain',
+                                style: TextStyle(
+                                  color: textPrimary, // Dark Charcoal
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.3,
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Ruhani Sukoon, Har Din Ke Liye',
+                                style: TextStyle(color: textSecondary, fontSize: 12), // Secondary Text
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: surfaceWhite,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: borderSubtle),
+                          ),
+                          child: const Icon(Icons.search_rounded, color: richEmerald, size: 20),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Horizontal Category Filter Chips
+                  SizedBox(
+                    height: 48,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: categories.length,
+                      itemBuilder: (context, index) {
+                        final cat = categories[index];
+                        final isSelected = selectedCategory == cat;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(cat),
+                            selected: isSelected,
+                            selectedColor: richEmerald, // Emerald when active
+                            backgroundColor: surfaceWhite, // Clean white when inactive
+                            labelStyle: TextStyle(
+                              color: isSelected ? Colors.white : textSecondary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 12.5,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: BorderSide(
+                                color: isSelected ? richEmerald : borderSubtle,
+                              ),
+                            ),
+                            onSelected: (bool selected) {
+                              setState(() {
+                                selectedCategory = cat;
+                              });
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Duas List
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                      itemCount: filteredDuas.length,
+                      itemBuilder: (context, index) {
+                        final dua = filteredDuas[index];
+                        final String id = 'dua_${dua.title}';
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: surfaceWhite, // Clean White Cards
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: borderSubtle), // Thin borders
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04), // Very subtle shadow
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Top row: Title & Category badge + Favorite
                               Row(
-                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: greenDark,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.auto_awesome_rounded, color: green, size: 12),
-                                        const SizedBox(width: 4),
-                                        ConstrainedBox(
-                                          constraints: const BoxConstraints(maxWidth: 110),
-                                          child: Text(
-                                            dua.category,
-                                            style: const TextStyle(
-                                              color: green,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
+                                  Expanded(
+                                    child: Text(
+                                      dua.title,
+                                      style: TextStyle(
+                                        color: textPrimary,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  const Icon(Icons.favorite_border_rounded, color: greyText, size: 20),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: secondarySurface, // Very Light Sage
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: borderSubtle),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.auto_awesome_rounded, color: richEmerald, size: 12),
+                                            const SizedBox(width: 4),
+                                            ConstrainedBox(
+                                              constraints: const BoxConstraints(maxWidth: 110),
+                                              child: Text(
+                                                dua.category,
+                                                style: const TextStyle(
+                                                  color: richEmerald,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      FutureBuilder<bool>(
+                                        future: FavoritesService.isFavorite(id),
+                                        builder: (context, snapshot) {
+                                          final isFav = snapshot.data ?? false;
+                                          return IconButton(
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                            icon: Icon(
+                                              isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                              color: isFav ? Colors.redAccent : textInactive,
+                                              size: 20,
+                                            ),
+                                            onPressed: () async {
+                                              await FavoritesService.toggleFavorite(
+                                                id: id,
+                                                category: 'Dua',
+                                                title: dua.title,
+                                                content: '${dua.arabic}\n\n${dua.translation}',
+                                                subtitle: dua.reference,
+                                              );
+                                              setState(() {});
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
+                              const SizedBox(height: 14),
 
-                          // Arabic Text (Gold) - Fixed alignment & textDirection
-                          Container(
-                            alignment: Alignment.centerRight,
-                            child: Text(
-                              dua.arabic,
-                              textDirection: TextDirection.rtl,
-                              style: const TextStyle(
-                                color: gold,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w800,
-                                height: 1.6,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Translation (Urdu)
-                          Text(
-                            dua.translation,
-                            style: const TextStyle(
-                              color: greyText,
-                              fontSize: 13,
-                              height: 1.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Footer: Reference & Action Buttons
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
+                              // Arabic Text (Deep Emerald for rich Islamic feel) - Fixed alignment & textDirection
+                              Container(
+                                alignment: Alignment.centerRight,
                                 child: Text(
-                                  dua.reference,
+                                  dua.arabic,
+                                  textDirection: TextDirection.rtl,
                                   style: const TextStyle(
-                                    color: green,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                                    color: primaryDeepEmerald, // Strong readable Islamic Typography
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.6,
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
+                              const SizedBox(height: 12),
+
+                              // Translation (Urdu)
+                              Text(
+                                dua.translation,
+                                style: TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 13,
+                                  height: 1.5,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+
+                              // Footer: Reference & Action Buttons
                               Row(
-                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  // Copy Button
-                                  GestureDetector(
-                                    onTap: () {
-                                      Clipboard.setData(ClipboardData(text: '${dua.arabic}\n\n${dua.translation}\n(${dua.reference})'));
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Dua copied to clipboard'),
-                                          duration: Duration(seconds: 1),
-                                        ),
-                                      );
-                                    },
-                                    child: Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF141C18),
-                                        shape: BoxShape.circle,
+                                  Expanded(
+                                    child: Text(
+                                      dua.reference,
+                                      style: TextStyle(
+                                        color: textSecondary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
                                       ),
-                                      child: const Icon(Icons.copy_rounded, color: greyText, size: 16),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                  const SizedBox(width: 10),
-                                  // Share Button
-                                  GestureDetector(
-                                    onTap: () {
-                                      final shareText = '✨ *${dua.title}* ✨\n\n${dua.arabic}\n\n${dua.translation}\n\n📖 Reference: ${dua.reference}\n(Shared via Prayer Times App)';
-                                      Share.share(shareText);
-                                    },
-                                    child: Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF141C18),
-                                        shape: BoxShape.circle,
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Copy Button
+                                      GestureDetector(
+                                        onTap: () {
+                                          Clipboard.setData(ClipboardData(text: '${dua.arabic}\n\n${dua.translation}\n(${dua.reference})'));
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              behavior: SnackBarBehavior.floating,
+                                              backgroundColor: primaryDeepEmerald,
+                                              content: Text('Dua copied to clipboard', style: TextStyle(color: Colors.white)),
+                                              duration: Duration(seconds: 1),
+                                            ),
+                                          );
+                                        },
+                                        child: Container(
+                                          width: 36,
+                                          height: 36,
+                                          decoration: BoxDecoration(
+                                            color: secondarySurface,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: borderSubtle),
+                                          ),
+                                          child: const Icon(Icons.copy_rounded, color: richEmerald, size: 16),
+                                        ),
                                       ),
-                                      child: const Icon(Icons.share_rounded, color: green, size: 16),
-                                    ),
+                                      const SizedBox(width: 10),
+                                      // Share Button
+                                      GestureDetector(
+                                        onTap: () {
+                                          final shareText = '✨ *${dua.title}* ✨\n\n${dua.arabic}\n\n${dua.translation}\n\n📖 Reference: ${dua.reference}\n(Shared via Prayer Times App)';
+                                          Share.share(shareText);
+                                        },
+                                        child: Container(
+                                          width: 36,
+                                          height: 36,
+                                          decoration: BoxDecoration(
+                                            color: secondarySurface,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: borderSubtle),
+                                          ),
+                                          child: const Icon(Icons.share_rounded, color: richEmerald, size: 16),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

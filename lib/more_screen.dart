@@ -1,5 +1,5 @@
+﻿import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'dart:ui';
 
 import 'home_screen.dart';
 import 'quran_screen.dart';
@@ -27,14 +27,25 @@ class MoreScreen extends StatefulWidget {
 }
 
 class _MoreScreenState extends State<MoreScreen> {
-  static const Color background = Color(0xFF000000);
-  static const Color cardBg = Color(0xFF0A0F0C);
-  static const Color green = Color(0xFF26E17A);
-  static const Color whiteText = Color(0xFFF4F6F5);
-  static const Color greyText = Color(0xFF98A19D);
-  static const Color borderColor = Color(0xFF1A221D);
+  // ==========================================================
+  // DYNAMIC PALETTE BASED ON DARK MODE STATE
+  // ==========================================================
+  bool get _isDark => ThemeService.isDarkMode.value;
 
-  // Smooth custom navigation with fade & scale transition
+  Color get appBackground => _isDark ? const Color(0xFF0B1511) : const Color(0xFFF7F6F1);
+  Color get surfaceWhite => _isDark ? const Color(0xFF14221C) : const Color(0xFFFFFFFF);
+  Color get secondarySurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
+
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
+
+  Color get textPrimary => _isDark ? const Color(0xFFF4F6F2) : const Color(0xFF1D2924);
+  Color get textSecondary => _isDark ? const Color(0xFFAAB6AF) : const Color(0xFF66736D);
+  Color get borderSubtle => _isDark ? const Color(0xFF24332B) : const Color(0xFFD5DFDA);
+
+  // Smooth custom navigation with fade & scale transition (Preserved 100%)
   void _navigateTo(Widget page) {
     Navigator.of(context).push(
       PageRouteBuilder(
@@ -67,74 +78,65 @@ class _MoreScreenState extends State<MoreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBack();
-      },
-      child: Scaffold(
-        backgroundColor: background,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Positioned(
-                top: 0,
-                right: 0,
-                left: 0,
-                height: 140,
-                child: Opacity(
-                  opacity: 0.2,
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFF0C3323), Colors.transparent],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              Column(
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, darkEnabled, child) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _handleBack();
+          },
+          child: Scaffold(
+            backgroundColor: appBackground,
+            body: SafeArea(
+              child: Column(
                 children: [
-                  // App Bar / Header
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  // Header / App Bar (Deep Emerald Theme)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: primaryDeepEmerald,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                     child: Row(
                       children: [
                         GestureDetector(
                           onTap: _handleBack,
                           child: Container(
-                            width: 38,
-                            height: 38,
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
-                              color: cardBg,
+                              color: richEmerald,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: borderColor),
                             ),
                             child: const Icon(Icons.arrow_back_ios_new_rounded,
-                                color: whiteText, size: 15),
+                                color: Colors.white, size: 18),
                           ),
                         ),
                         const SizedBox(width: 14),
-                        const Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'More Features',
-                              style: TextStyle(
-                                color: whiteText,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'More Features',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.3,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 1),
-                            Text(
-                              'Explore more Islamic tools',
-                              style: TextStyle(color: greyText, fontSize: 11.5),
-                            ),
-                          ],
+                              SizedBox(height: 2),
+                              Text(
+                                'Explore more Islamic tools',
+                                style: TextStyle(color: Color(0xFFDCEAE4), fontSize: 12),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -157,7 +159,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Prayer Tim...',
                                   urduSub: 'نماز کے اوقات',
                                   icon: Icons.access_time_rounded,
-                                  color: const Color(0xFFF39C12),
+                                  accentColor: mutedGold,
                                   onTap: _handleBack,
                                 ),
                               ),
@@ -167,7 +169,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Quran',
                                   urduSub: 'تلاوت قرآن',
                                   icon: Icons.menu_book_rounded,
-                                  color: const Color(0xFF26E17A),
+                                  accentColor: richEmerald,
                                   onTap: () => _navigateTo(const QuranScreen()),
                                 ),
                               ),
@@ -177,7 +179,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Tasbih',
                                   urduSub: 'ڈیجیٹل تسبیح',
                                   icon: Icons.radio_button_checked_rounded,
-                                  color: const Color(0xFF3498DB),
+                                  accentColor: softEmerald,
                                   onTap: () => _navigateTo(const TasbeehScreen()),
                                 ),
                               ),
@@ -187,7 +189,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Qibla',
                                   urduSub: 'قبلہ رخ',
                                   icon: Icons.explore_rounded,
-                                  color: const Color(0xFF9B59B6),
+                                  accentColor: richEmerald,
                                   onTap: () => _navigateTo(const QiblaScreen()),
                                 ),
                               ),
@@ -206,7 +208,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Duas',
                                   urduSub: 'روزانہ دعائیں',
                                   icon: Icons.favorite_rounded,
-                                  color: const Color(0xFF26E17A),
+                                  accentColor: softEmerald,
                                   onTap: () => _navigateTo(const DuasScreen()),
                                 ),
                               ),
@@ -216,7 +218,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Hadith',
                                   urduSub: 'صحیح احادیث',
                                   icon: Icons.menu_book_rounded,
-                                  color: const Color(0xFFF39C12),
+                                  accentColor: mutedGold,
                                   onTap: () => _navigateTo(const HadithScreen()),
                                 ),
                               ),
@@ -226,7 +228,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: '99 Names',
                                   urduSub: 'اسماء الحسنیٰ',
                                   icon: Icons.auto_awesome_rounded,
-                                  color: const Color(0xFF3498DB),
+                                  accentColor: softEmerald,
                                   onTap: () => _navigateTo(const AsmaUlHusnaScreen()),
                                 ),
                               ),
@@ -236,7 +238,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Articles',
                                   urduSub: 'اسلامی مضامین',
                                   icon: Icons.article_rounded,
-                                  color: const Color(0xFF9B59B6),
+                                  accentColor: richEmerald,
                                   onTap: () => _navigateTo(const IslamicArticlesScreen()),
                                 ),
                               ),
@@ -255,7 +257,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Calendar',
                                   urduSub: 'اسلامی تاریخ',
                                   icon: Icons.calendar_month_rounded,
-                                  color: const Color(0xFFF39C12),
+                                  accentColor: mutedGold,
                                   onTap: () => _navigateTo(const IslamicCalendarScreen()),
                                 ),
                               ),
@@ -265,7 +267,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Calculator',
                                   urduSub: 'زکوٰۃ کیلکولیٹر',
                                   icon: Icons.calculate_rounded,
-                                  color: const Color(0xFF26E17A),
+                                  accentColor: softEmerald,
                                   onTap: () => _navigateTo(const IslamicCalculatorScreen()),
                                 ),
                               ),
@@ -275,7 +277,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Converter',
                                   urduSub: 'ہجری تاریخ تبدیل',
                                   icon: Icons.sync_alt_rounded,
-                                  color: const Color(0xFF3498DB),
+                                  accentColor: richEmerald,
                                   onTap: () => _navigateTo(const HijriConverterScreen()),
                                 ),
                               ),
@@ -285,7 +287,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Mosques',
                                   urduSub: 'قریبی مساجد',
                                   icon: Icons.mosque_rounded,
-                                  color: const Color(0xFF9B59B6),
+                                  accentColor: softEmerald,
                                   onTap: () => _navigateTo(const NearbyMosquesScreen()),
                                 ),
                               ),
@@ -304,7 +306,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Favorites',
                                   urduSub: 'محفوظ کردہ',
                                   icon: Icons.bookmark_rounded,
-                                  color: const Color(0xFF26E17A),
+                                  accentColor: softEmerald,
                                   onTap: () => _navigateTo(const FavoritesScreen()),
                                 ),
                               ),
@@ -314,7 +316,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Notes',
                                   urduSub: 'میرے نوٹس',
                                   icon: Icons.edit_note_rounded,
-                                  color: const Color(0xFFF39C12),
+                                  accentColor: mutedGold,
                                   onTap: () => _navigateTo(const NotesScreen()),
                                 ),
                               ),
@@ -324,8 +326,8 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Reminders',
                                   urduSub: 'خاس یاد دہانی',
                                   icon: Icons.notifications_active_rounded,
-                                  color: const Color(0xFF3498DB),
-                                  onTap: () => _navigateTo(const SettingsScreen()), // Linked to settings or reminders if available
+                                  accentColor: richEmerald,
+                                  onTap: () => _navigateTo(const SettingsScreen()),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -334,7 +336,7 @@ class _MoreScreenState extends State<MoreScreen> {
                                   title: 'Settings',
                                   urduSub: 'ترتیبات',
                                   icon: Icons.settings_rounded,
-                                  color: const Color(0xFF9B59B6),
+                                  accentColor: softEmerald,
                                   onTap: () => _navigateTo(const SettingsScreen()),
                                 ),
                               ),
@@ -346,10 +348,10 @@ class _MoreScreenState extends State<MoreScreen> {
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -363,27 +365,27 @@ class _MoreScreenState extends State<MoreScreen> {
               width: 3.5,
               height: 14,
               decoration: BoxDecoration(
-                color: green,
+                color: mutedGold,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(width: 8),
             Text(
               title,
-              style: const TextStyle(
-                color: whiteText,
+              style: TextStyle(
+                color: textPrimary,
                 fontSize: 15,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
         ),
         Text(
           badge,
-          style: const TextStyle(
-            color: green,
+          style: TextStyle(
+            color: textSecondary,
             fontSize: 11,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ],
@@ -394,7 +396,7 @@ class _MoreScreenState extends State<MoreScreen> {
     required String title,
     required String urduSub,
     required IconData icon,
-    required Color color,
+    required Color accentColor,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -403,36 +405,37 @@ class _MoreScreenState extends State<MoreScreen> {
         height: 115,
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              color.withOpacity(0.22),
-              color.withOpacity(0.04),
-            ],
-          ),
+          color: surfaceWhite,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.35), width: 1.1),
+          border: Border.all(color: borderSubtle),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 36,
-              height: 36,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.25),
-                shape: BoxShape.circle,
+                color: secondarySurface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: borderSubtle),
               ),
-              child: Icon(icon, color: color, size: 18),
+              child: Icon(icon, color: accentColor, size: 18),
             ),
             const SizedBox(height: 8),
             Text(
               title,
-              style: const TextStyle(
-                color: whiteText,
+              style: TextStyle(
+                color: textPrimary,
                 fontSize: 11,
-                fontWeight: FontWeight.w900,
+                fontWeight: FontWeight.w600,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -442,9 +445,9 @@ class _MoreScreenState extends State<MoreScreen> {
             Text(
               urduSub,
               style: TextStyle(
-                color: color,
+                color: textSecondary,
                 fontSize: 9,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w500,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

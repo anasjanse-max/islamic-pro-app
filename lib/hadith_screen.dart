@@ -1,7 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:ui';
+
 import 'favorites_service.dart';
 import 'more_screen.dart'; // Navigates smoothly back to More screen
+import 'settings_screen.dart';
 
 class HadithItem {
   final String category;
@@ -27,16 +30,24 @@ class HadithScreen extends StatefulWidget {
 }
 
 class _HadithScreenState extends State<HadithScreen> {
-  static const Color background = Color(0xFF000000);
-  static const Color card = Color(0xFF0A0F0C);
-  static const Color card2 = Color(0xFF101613);
+  // ==========================================================
+  // DYNAMIC PALETTE BASED ON DARK MODE STATE
+  // ==========================================================
+  bool get _isDark => ThemeService.isDarkMode.value;
 
-  static const Color green = Color(0xFF26E17A);
-  static const Color greenDark = Color(0xFF0C3323);
-  static const Color gold = Color(0xFFE8B63D);
+  Color get appBackground => _isDark ? const Color(0xFF0B1511) : const Color(0xFFF7F6F1);
+  Color get surfaceWhite => _isDark ? const Color(0xFF14221C) : const Color(0xFFFFFFFF);
+  Color get secondarySurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
 
-  static const Color whiteText = Color(0xFFF4F6F5);
-  static const Color greyText = Color(0xFF98A19D);
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
+
+  Color get textPrimary => _isDark ? const Color(0xFFF4F6F2) : const Color(0xFF1D2924);
+  Color get textSecondary => _isDark ? const Color(0xFFAAB6AF) : const Color(0xFF66736D);
+  Color get textInactive => _isDark ? const Color(0xFF718079) : const Color(0xFF718079);
+  Color get borderSubtle => _isDark ? const Color(0xFF24332B) : const Color(0xFFD5DFDA);
 
   String _selectedCategory = 'سب';
 
@@ -348,97 +359,108 @@ class _HadithScreenState extends State<HadithScreen> {
   ];
 
   void _handleBack() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 200),
-        pageBuilder: (_, __, ___) => const MoreScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 180),
+          pageBuilder: (_, __, ___) => const MoreScreen(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final filteredHadiths = _selectedCategory == 'سب'
-        ? _hadiths
-        : _hadiths.where((h) => h.category == _selectedCategory).toList();
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, darkEnabled, child) {
+        final filteredHadiths = _selectedCategory == 'سب'
+            ? _hadiths
+            : _hadiths.where((h) => h.category == _selectedCategory).toList();
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBack();
-      },
-      child: Scaffold(
-        backgroundColor: background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _appBar(),
-              _categorySelector(),
-              Expanded(
-                child: filteredHadiths.isEmpty
-                    ? const Center(
-                  child: Text(
-                    'اس زمرے میں کوئی حدیث نہیں ملی',
-                    style: TextStyle(color: greyText, fontSize: 14),
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _handleBack();
+          },
+          child: Scaffold(
+            backgroundColor: appBackground, // Applied Dynamic Background
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _appBar(),
+                  _categorySelector(),
+                  Expanded(
+                    child: filteredHadiths.isEmpty
+                        ? Center(
+                      child: Text(
+                        'اس زمرے میں کوئی حدیث نہیں ملی',
+                        style: TextStyle(color: textSecondary, fontSize: 14),
+                      ),
+                    )
+                        : ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      itemCount: filteredHadiths.length,
+                      itemBuilder: (context, index) {
+                        return _hadithCard(filteredHadiths[index]);
+                      },
+                    ),
                   ),
-                )
-                    : ListView.builder(
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-                  itemCount: filteredHadiths.length,
-                  itemBuilder: (context, index) {
-                    return _hadithCard(filteredHadiths[index]);
-                  },
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _appBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
           GestureDetector(
             onTap: _handleBack,
             child: Container(
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: card,
+                color: richEmerald, // Premium Action Button
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: richEmerald),
               ),
               child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: whiteText, size: 16),
+                  color: Colors.white, size: 18),
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'صحیح احادیث مبارکہ',
                   style: TextStyle(
-                    color: green,
+                    color: textSecondary, // Secondary Text
                     fontSize: 11,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   'فرامینِ نبی کریم ﷺ',
                   style: TextStyle(
-                    color: whiteText,
+                    color: textPrimary, // Dark/Light Heading
                     fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ],
@@ -451,37 +473,37 @@ class _HadithScreenState extends State<HadithScreen> {
 
   Widget _categorySelector() {
     return SizedBox(
-      height: 52,
+      height: 48,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         itemCount: _categories.length,
         itemBuilder: (context, index) {
           final cat = _categories[index];
           final isSelected = cat == _selectedCategory;
           return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.only(right: 8),
             child: GestureDetector(
               onTap: () => setState(() => _selectedCategory = cat),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: isSelected ? greenDark : card,
+                  color: isSelected ? richEmerald : surfaceWhite, // Active Emerald, Inactive Surface
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: isSelected ? green : Colors.white.withOpacity(0.08),
+                    color: isSelected ? richEmerald : borderSubtle,
                   ),
                 ),
                 child: Center(
                   child: Text(
                     cat,
                     style: TextStyle(
-                      color: isSelected ? green : whiteText,
-                      fontSize: 12,
+                      color: isSelected ? Colors.white : textSecondary, // Active White text, Inactive Secondary text
+                      fontSize: 12.5,
                       fontWeight:
-                      isSelected ? FontWeight.w900 : FontWeight.w700,
+                      isSelected ? FontWeight.w600 : FontWeight.w500,
                     ),
                   ),
                 ),
@@ -496,12 +518,19 @@ class _HadithScreenState extends State<HadithScreen> {
   Widget _hadithCard(HadithItem hadith) {
     final String id = 'hadith_${hadith.title}';
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: card,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: surfaceWhite, // Clean Dynamic Cards
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04), // Very subtle soft shadow
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,28 +541,29 @@ class _HadithScreenState extends State<HadithScreen> {
               Expanded(
                 child: Text(
                   hadith.title,
-                  style: const TextStyle(
-                    color: whiteText,
+                  style: TextStyle(
+                    color: textPrimary, // Dynamic Title
                     fontSize: 15,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: card2,
-                  borderRadius: BorderRadius.circular(8),
+                  color: secondarySurface, // Very Light Sage / Dark Surface
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: borderSubtle),
                 ),
                 child: Text(
                   hadith.category,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: gold,
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w700,
+                    color: richEmerald, // Emerald text inside badge
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -547,7 +577,7 @@ class _HadithScreenState extends State<HadithScreen> {
                     constraints: const BoxConstraints(),
                     icon: Icon(
                       isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: isFav ? Colors.redAccent : greyText,
+                      color: isFav ? Colors.redAccent : textInactive, // Inactive soft color
                       size: 20,
                     ),
                     onPressed: () async {
@@ -570,7 +600,7 @@ class _HadithScreenState extends State<HadithScreen> {
             hadith.arabic,
             textDirection: TextDirection.rtl,
             style: const TextStyle(
-              color: gold,
+              color: primaryDeepEmerald, // Strong Islamic Emerald Arabic Text
               fontSize: 20,
               height: 1.6,
               fontWeight: FontWeight.w700,
@@ -579,23 +609,23 @@ class _HadithScreenState extends State<HadithScreen> {
           const SizedBox(height: 12),
           Text(
             hadith.urduTranslation,
-            style: const TextStyle(
-              color: greyText,
-              fontSize: 13.5,
+            style: TextStyle(
+              color: textSecondary, // Secondary text for translation
+              fontSize: 13,
               height: 1.5,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               Text(
                 hadith.reference,
-                style: const TextStyle(
-                  color: green,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
+                style: TextStyle(
+                  color: textSecondary, // Clean secondary text for reference
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ],

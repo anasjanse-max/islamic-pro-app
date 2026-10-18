@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'favorites_service.dart';
 import 'more_screen.dart'; // Smooth navigation ke liye MoreScreen import kiya
 
@@ -10,23 +10,36 @@ class IslamicArticlesScreen extends StatefulWidget {
 }
 
 class _IslamicArticlesScreenState extends State<IslamicArticlesScreen> {
-  static const Color background = Color(0xFF000000);
-  static const Color card = Color(0xFF0A0F0C);
-  static const Color green = Color(0xFF26E17A);
-  static const Color greenDark = Color(0xFF0C3323);
-  static const Color gold = Color(0xFFE8B63D);
-  static const Color whiteText = Color(0xFFF4F6F5);
-  static const Color greyText = Color(0xFF98A19D);
+  // ==========================================================
+  // PREMIUM PROFESSIONAL COLOR SYSTEM PALETTE
+  // ==========================================================
+  static const Color appBackground = Color(0xFFF7F6F1); // Warm Ivory
+  static const Color surfaceWhite = Color(0xFFFFFFFF); // Clean White Cards
+  static const Color secondarySurface = Color(0xFFE7F0EB); // Very Light Sage
+
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
+
+  static const Color textPrimary = Color(0xFF1D2924); // Dark Charcoal
+  static const Color textSecondary = Color(0xFF66736D); // Secondary Text
+  static const Color textInactive = Color(0xFF718079);
+  static const Color borderSubtle = Color(0xFFD5DFDA);
 
   void _handleBack() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 180),
-        pageBuilder: (_, __, ___) => const MoreScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 180),
+          pageBuilder: (_, __, ___) => const MoreScreen(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      );
+    }
   }
 
   @override
@@ -38,38 +51,39 @@ class _IslamicArticlesScreenState extends State<IslamicArticlesScreen> {
         _handleBack();
       },
       child: Scaffold(
-        backgroundColor: background,
+        backgroundColor: appBackground, // Premium Background
         body: SafeArea(
           child: Column(
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                 child: Row(
                   children: [
                     GestureDetector(
                       onTap: _handleBack,
                       child: Container(
-                        width: 42,
-                        height: 42,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
-                          color: card,
+                          color: richEmerald, // Premium Action Button
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white.withOpacity(0.1)),
+                          border: Border.all(color: richEmerald),
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new_rounded, color: whiteText, size: 16),
+                        child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
                       ),
                     ),
+                    const SizedBox(width: 14),
                     const Expanded(
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('اسلامی مضامین', style: TextStyle(color: green, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                          Text('اسلامی مضامین', style: TextStyle(color: textSecondary, fontSize: 11, fontWeight: FontWeight.w600)), // Secondary Text
                           SizedBox(height: 2),
-                          Text('پڑھیں اور سیکھیں', style: TextStyle(color: whiteText, fontSize: 18, fontWeight: FontWeight.w900)),
+                          Text('پڑھیں اور سیکھیں', style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.3)), // Dark Charcoal
                         ],
                       ),
                     ),
-                    const SizedBox(width: 42), // Balance alignment
                   ],
                 ),
               ),
@@ -80,8 +94,8 @@ class _IslamicArticlesScreenState extends State<IslamicArticlesScreen> {
                   physics: const BouncingScrollPhysics(
                     parent: AlwaysScrollableScrollPhysics(), // Native smooth bounce
                   ),
-                  cacheExtent: 2000, // Pre-loads content for zero lag
-                  padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
+
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                   children: [
                     _articleCategory(
                       '🕌 نماز (الصلوة)',
@@ -170,18 +184,25 @@ class _IslamicArticlesScreenState extends State<IslamicArticlesScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: card,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: Colors.white.withOpacity(0.08)),
+          color: surfaceWhite, // Clean White Cards
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderSubtle),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04), // Very subtle shadow
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(color: gold, fontSize: 16, fontWeight: FontWeight.w900)),
+            Text(title, style: const TextStyle(color: primaryDeepEmerald, fontSize: 16, fontWeight: FontWeight.w700)), // Deep Emerald Title
             const SizedBox(height: 2),
-            Text(subtitle, style: const TextStyle(color: greyText, fontSize: 11)),
+            Text(subtitle, style: const TextStyle(color: textSecondary, fontSize: 11)), // Secondary Text
             const SizedBox(height: 12),
-            const Divider(color: Colors.white12, height: 1),
+            const Divider(color: borderSubtle, height: 1),
             const SizedBox(height: 12),
             ...items,
           ],
@@ -199,10 +220,10 @@ class _IslamicArticlesScreenState extends State<IslamicArticlesScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.brightness_1, color: green, size: 6),
+              const Icon(Icons.brightness_1, color: richEmerald, size: 6), // Premium Emerald Bullet
               const SizedBox(width: 8),
               Expanded(
-                child: Text(heading, style: const TextStyle(color: whiteText, fontSize: 13.5, fontWeight: FontWeight.w800)),
+                child: Text(heading, style: const TextStyle(color: textPrimary, fontSize: 13.5, fontWeight: FontWeight.w600)), // Dark Charcoal Heading
               ),
               const SizedBox(width: 6),
               FutureBuilder<bool>(
@@ -214,7 +235,7 @@ class _IslamicArticlesScreenState extends State<IslamicArticlesScreen> {
                     constraints: const BoxConstraints(),
                     icon: Icon(
                       isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                      color: isFav ? Colors.redAccent : greyText,
+                      color: isFav ? Colors.redAccent : textInactive, // Inactive soft color
                       size: 18,
                     ),
                     onPressed: () async {
@@ -235,7 +256,7 @@ class _IslamicArticlesScreenState extends State<IslamicArticlesScreen> {
           const SizedBox(height: 3),
           Padding(
             padding: const EdgeInsets.only(left: 14),
-            child: Text(desc, style: const TextStyle(color: greyText, fontSize: 12, height: 1.4)),
+            child: Text(desc, style: const TextStyle(color: textSecondary, fontSize: 12, height: 1.4)), // Secondary Text for Description
           ),
         ],
       ),

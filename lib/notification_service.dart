@@ -1,17 +1,17 @@
 import 'dart:isolate';
 import 'dart:ui';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:sound_mode/sound_mode.dart';
+import 'package:sound_mode/utils/ringer_mode_statuses.dart';
 
 import 'audio_service.dart';
-
-// ==========================================================
-// BACKGROUND NOTIFICATION ACTION (LOCK SCREEN / BACKSTAGE)
-// ==========================================================
 
 @pragma('vm:entry-point')
 void notificationTapBackground(NotificationResponse notificationResponse) {
@@ -20,39 +20,35 @@ void notificationTapBackground(NotificationResponse notificationResponse) {
 
   if (notificationResponse.actionId == NotificationService.stopAzanActionId ||
       notificationResponse.actionId == null) {
-    // 1. Local isolate stop
-    AudioService.stopAzan();
 
-    // 2. Send signal to Main Isolate where AudioPlayer is playing
     try {
-      final SendPort? sendPort =
-      IsolateNameServer.lookupPortByName('azan_control_port');
+      final SendPort? sendPort = IsolateNameServer.lookupPortByName('azan_control_port');
       sendPort?.send('stop_azan');
     } catch (e) {
       debugPrint('Error sending stop to main isolate: $e');
     }
 
-    // 3. Cancel notification banner
-    if (notificationResponse.id != null) {
-      NotificationService.cancelNotification(notificationResponse.id!);
-    } else {
-      NotificationService.cancelAllNotifications();
+    try {
+      if (notificationResponse.id != null) {
+        NotificationService.cancelNotification(notificationResponse.id!);
+      } else {
+        NotificationService.cancelAllNotifications();
+      }
+    } catch (e) {
+      debugPrint('Error cancelling notification in background: $e');
     }
   }
 }
-
-// ==========================================================
-// NOTIFICATION SERVICE
-// ==========================================================
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
   FlutterLocalNotificationsPlugin();
 
-  static const String channelId = 'prayer_azan_channel_v13';
-  static const String channelName = 'Prayer Azan High Priority Alerts V13';
+  // Naya channel ID v16 taake Android purani silent setting bhool jaye
+  static const String channelId = 'prayer_azan_channel_v16';
+  static const String channelName = 'Prayer Azan High Priority Alerts V16';
   static const String channelDescription =
-      'High priority alarm notifications for all prayer times.';
+      'High priority notifications that respect device sound profile.';
   static const String stopAzanActionId = 'stop_azan';
 
   static Future<void> initialize() async {
@@ -85,10 +81,8 @@ class NotificationService {
         onDidReceiveBackgroundNotificationResponse: notificationTapBackground,
       );
 
-      // Register Isolate listener in main thread
       AudioService.initIsolateListener();
 
-      await requestAutoPermissions();
       await _createNotificationChannel();
 
       debugPrint('NOTIFICATION SERVICE READY');
@@ -107,9 +101,7 @@ class NotificationService {
       if (await Permission.scheduleExactAlarm.isDenied) {
         await Permission.scheduleExactAlarm.request();
       }
-      if (await Permission.ignoreBatteryOptimizations.isDenied) {
-        await Permission.ignoreBatteryOptimizations.request();
-      }
+      // Yahan se battery optimization ka code mukammal delete kar diya gaya hai
     } catch (e) {
       debugPrint('Auto Permission error: $e');
     }
@@ -142,47 +134,39 @@ class NotificationService {
     }
   }
 
-  static NotificationDetails _notificationDetails() {
-    const AndroidNotificationDetails androidDetails =
-    AndroidNotificationDetails(
-      channelId,
-      channelName,
-      channelDescription: channelDescription,
-      importance: Importance.max,
-      priority: Priority.max,
-      playSound: true,
-      sound: RawResourceAndroidNotificationSound('azan'),
-      category: AndroidNotificationCategory.alarm,
-      enableVibration: true,
-      channelShowBadge: true,
-      autoCancel: false,
-      ongoing: true,
-      fullScreenIntent: true,
-      visibility: NotificationVisibility.public,
-      actions: <AndroidNotificationAction>[
-        AndroidNotificationAction(
-          stopAzanActionId,
-          'STOP AZAN',
-          cancelNotification: true,
-          showsUserInterface: false,
-        ),
-      ],
-    );
-
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      sound: 'azan.mp3',
-    );
-
-    return const NotificationDetails(
-      android: androidDetails,
-      iOS: iosDetails,
-    );
+  static Future<bool> isPrayerMuted(String prayerName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final bool globalAlerts = prefs.getBool('prayer_notifications') ?? true;
+    if (!globalAlerts) return true;
+    return prefs.getBool('mute_$prayerName') ?? false;
   }
 
-  static Future<void> playAzan() async {
+  static Future<bool> isVibrationEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('vibration_enabled') ?? true;
+  }
+
+  static Future<void> playAzan(String prayerName) async {
+    final bool muted = await isPrayerMuted(prayerName);
+    if (muted) {
+      debugPrint('$prayerName is muted. Skipping Azan audio.');
+      return;
+    }
+
+    try {
+      RingerModeStatus ringerStatus = await SoundMode.ringerModeStatus;
+
+      if (ringerStatus == RingerModeStatus.silent) {
+        debugPrint('Phone is on SILENT. No Audio, No Vibration.');
+        return;
+      } else if (ringerStatus == RingerModeStatus.vibrate) {
+        debugPrint('Phone is on VIBRATE. OS will vibrate, No Azan Audio.');
+        return;
+      }
+    } catch (e) {
+      debugPrint('Could not check sound mode (Assuming Normal): $e');
+    }
+
     await AudioService.playAzan();
   }
 
@@ -197,39 +181,67 @@ class NotificationService {
 
   static bool get isAzanPlaying => AudioService.isPlaying;
 
-  static Future<void> testAzanNotification() async {
-    try {
-      await stopAzan();
-      await _notificationsPlugin.show(
-        id: 9999,
-        title: '🕌 Test Azan',
-        body: 'Prayer time test is active. Tap STOP AZAN to stop.',
-        notificationDetails: _notificationDetails(),
-        payload: 'test_azan',
-      );
-
-      await playAzan();
-    } catch (e) {
-      debugPrint('TEST AZAN ERROR: $e');
-    }
-  }
-
   static Future<void> showPrayerNow({
     required int id,
     required String prayerName,
     required String city,
   }) async {
     try {
+      final bool muted = await isPrayerMuted(prayerName);
+      if (muted) {
+        debugPrint('$prayerName is muted. Suppressing notification.');
+        return;
+      }
+
       await stopAzan();
+
+      AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: channelDescription,
+        importance: Importance.max,
+        priority: Priority.max,
+        playSound: true,
+        sound: const RawResourceAndroidNotificationSound('azan'),
+        category: AndroidNotificationCategory.alarm, // Yahan 'reminder' ki jagah 'alarm' kar diya hai
+        enableVibration: true,
+        vibrationPattern: Int64List.fromList([0, 2000]),
+        channelShowBadge: true,
+        autoCancel: false,
+        ongoing: true,
+        fullScreenIntent: true,
+        visibility: NotificationVisibility.public,
+        actions: <AndroidNotificationAction>[
+          AndroidNotificationAction(
+            stopAzanActionId,
+            'STOP AZAN',
+            cancelNotification: true,
+            showsUserInterface: false,
+          ),
+        ],
+      );
+
+      DarwinNotificationDetails iosDetails = const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'azan.mp3',
+      );
+
+      NotificationDetails details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
       await _notificationsPlugin.show(
         id: id,
         title: '🕌 $prayerName Prayer',
         body: 'It is time for $prayerName prayer in $city.',
-        notificationDetails: _notificationDetails(),
+        notificationDetails: details,
         payload: 'prayer_$id',
       );
 
-      await playAzan();
+      await playAzan(prayerName);
     } catch (e) {
       debugPrint('Show prayer error: $e');
     }
@@ -247,13 +259,57 @@ class NotificationService {
 
       if (!scheduledDate.isAfter(now)) return;
 
-      // Fixed: Removed unsupported parameters to match local notification package version
+      final bool muted = await isPrayerMuted(prayerName);
+      if (muted) {
+        debugPrint('$prayerName is muted. Skipping scheduling.');
+        await cancelNotification(id);
+        return;
+      }
+
+      AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+        channelId,
+        channelName,
+        channelDescription: channelDescription,
+        importance: Importance.max,
+        priority: Priority.max,
+        playSound: true,
+        sound: const RawResourceAndroidNotificationSound('azan'),
+        category: AndroidNotificationCategory.alarm, // Yahan bhi 'alarm' kar diya hai
+        enableVibration: true,
+        vibrationPattern: Int64List.fromList([0, 2000]),
+        channelShowBadge: true,
+        autoCancel: false,
+        ongoing: true,
+        fullScreenIntent: true,
+        visibility: NotificationVisibility.public,
+        actions: <AndroidNotificationAction>[
+          AndroidNotificationAction(
+            stopAzanActionId,
+            'STOP AZAN',
+            cancelNotification: true,
+            showsUserInterface: false,
+          ),
+        ],
+      );
+
+      DarwinNotificationDetails iosDetails = const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        sound: 'azan.mp3',
+      );
+
+      NotificationDetails details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
       await _notificationsPlugin.zonedSchedule(
         id: id,
         title: '🕌 $prayerName Prayer',
         body: 'It is time for $prayerName prayer in $city.',
         scheduledDate: scheduledDate,
-        notificationDetails: _notificationDetails(),
+        notificationDetails: details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         payload: 'prayer_$id',
       );

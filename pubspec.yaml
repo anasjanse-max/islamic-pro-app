@@ -2,7 +2,7 @@ name: prayer_times_app
 description: "A Prayer Times Flutter App"
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+7
 
 environment:
   sdk: ^3.12.2
@@ -45,8 +45,12 @@ dependencies:
   url_launcher: ^6.3.1
 
   # In-app Google Maps WebView
-  webview_flutter: ^4.10.0
+  webview_flutter: ^4.9.0
   share_plus: ^13.3.0
+
+  # Google Mobile Ads
+  google_mobile_ads: ^9.1.0
+  sound_mode: ^3.1.1
 
 dev_dependencies:
   flutter_test:
@@ -58,15 +62,15 @@ dev_dependencies:
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/icon/app_icon.png"
+  image_path: "assets/icon/app_icon.jpg"
   min_sdk_android: 21
-  adaptive_icon_background: "#000000"
-  adaptive_icon_foreground: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#164E3B"
+  adaptive_icon_foreground: "assets/icon/app_icon.jpg"
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/audio/azan.mp3
-    - assets/icon/app_icon.png
     - assets/images/
+    - assets/icon/

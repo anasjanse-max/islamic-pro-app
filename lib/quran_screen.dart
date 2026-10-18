@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -18,26 +18,38 @@ class QuranScreen extends StatefulWidget {
   State<QuranScreen> createState() => _QuranScreenState();
 }
 
-class _QuranScreenState extends State<QuranScreen>
-    with SingleTickerProviderStateMixin {
-  static const Color bg = Color(0xFF040806);
-  static const Color card = Color(0xFF0D1612);
-  static const Color card2 = Color(0xFF121E18);
+class _QuranScreenState extends State<QuranScreen> with SingleTickerProviderStateMixin {
+  // ==========================================================
+  // DYNAMIC PALETTE BASED ON DARK MODE STATE
+  // ==========================================================
+  bool get _isDark => ThemeService.isDarkMode.value;
 
-  static const Color green = Color(0xFF00E676);
-  static const Color greenDark = Color(0xFF0B2E1E);
+  Color get appBackground => _isDark ? const Color(0xFF0B1511) : const Color(0xFFF7F6F1);
+  Color get surfaceWhite => _isDark ? const Color(0xFF14221C) : const Color(0xFFFFFFFF);
+  Color get secondarySurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
+  Color get selectedSurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
 
-  static const Color gold = Color(0xFFFFD700);
-  static const Color goldAccent = Color(0xFFE5B53B);
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
 
-  static const Color whiteText = Color(0xFFFFFFFF);
-  static const Color greyText = Color(0xFF90A4AE);
+  Color get textPrimary => _isDark ? const Color(0xFFF4F6F2) : const Color(0xFF1D2924);
+  Color get textSecondary => _isDark ? const Color(0xFFAAB6AF) : const Color(0xFF66736D);
+  Color get textInactive => _isDark ? const Color(0xFF718079) : const Color(0xFF718079);
+  Color get borderSubtle => _isDark ? const Color(0xFF24332B) : const Color(0xFFD5DFDA);
 
+  // ==========================================================
+  // STATE VARIABLES
+  // ==========================================================
   final TextEditingController _searchController = TextEditingController();
   late TabController _tabController;
 
   String searchText = '';
 
+  // ==========================================================
+  // DATA SOURCES (Preserved 100%)
+  // ==========================================================
   List<Map<String, dynamic>> surahs = const [
     {'number': 1, 'name': 'Al-Fatihah', 'arabic': 'الفاتحة', 'meaning': 'The Opening', 'verses': 7, 'revelation': 'Meccan'},
     {'number': 2, 'name': 'Al-Baqarah', 'arabic': 'البقرة', 'meaning': 'The Cow', 'verses': 286, 'revelation': 'Medinan'},
@@ -182,6 +194,9 @@ class _QuranScreenState extends State<QuranScreen>
     };
   });
 
+  // ==========================================================
+  // INITIALIZATION & LIFECYCLE
+  // ==========================================================
   @override
   void initState() {
     super.initState();
@@ -197,6 +212,16 @@ class _QuranScreenState extends State<QuranScreen>
     _loadSurahs();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // ==========================================================
+  // API & LOGIC (Preserved 100%)
+  // ==========================================================
   Future<void> _loadSurahs() async {
     try {
       final response = await http
@@ -226,6 +251,9 @@ class _QuranScreenState extends State<QuranScreen>
     } catch (_) {}
   }
 
+  // ==========================================================
+  // NAVIGATION & UI HELPERS
+  // ==========================================================
   void _handleBack() {
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -243,8 +271,10 @@ class _QuranScreenState extends State<QuranScreen>
         reverseTransitionDuration: const Duration(milliseconds: 160),
         pageBuilder: (_, _, _) => page,
         transitionsBuilder: (_, animation, _, child) {
-          final curve =
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          final curve = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          );
           return FadeTransition(
             opacity: curve,
             child: ScaleTransition(
@@ -257,66 +287,72 @@ class _QuranScreenState extends State<QuranScreen>
     );
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    _tabController.dispose();
-    super.dispose();
-  }
-
+  // ==========================================================
+  // WIDGET BUILDERS
+  // ==========================================================
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBack();
-      },
-      child: Scaffold(
-        backgroundColor: bg,
-        body: SafeArea(
-          bottom: false,
-          child: Stack(
-            children: [
-              // Main Scrollable Content
-              Column(
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, darkEnabled, child) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _handleBack();
+          },
+          child: Scaffold(
+            backgroundColor: appBackground,
+            body: SafeArea(
+              bottom: false,
+              child: Stack(
                 children: [
-                  _header(),
-                  _selector(),
-                  _search(),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      physics: const BouncingScrollPhysics(),
-                      children: [
-                        _surahList(),
-                        _paraList(),
-                      ],
-                    ),
+                  // Main Scrollable Content
+                  Column(
+                    children: [
+                      _header(),
+                      _selector(),
+                      _search(),
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          physics: const BouncingScrollPhysics(),
+                          children: [
+                            _surahList(),
+                            _paraList(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Floating Frosted Navigation Dock
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _buildBottomNavigation(),
                   ),
                 ],
               ),
-              // Floating Frosted Navigation Dock (Identical to HomeScreen)
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: _buildBottomNavigation(),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   // ==========================================================
-  // TOP EXECUTIVE HEADER WITH CALLIGRAPHIC TITLE
+  // TOP EXECUTIVE HEADER (Deep Emerald Theme)
   // ==========================================================
-
   Widget _header() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 10, 18, 6),
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: primaryDeepEmerald,
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Column(
         children: [
           Row(
@@ -325,160 +361,55 @@ class _QuranScreenState extends State<QuranScreen>
               GestureDetector(
                 onTap: _handleBack,
                 child: Container(
-                  width: 44,
-                  height: 44,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
-                    color: card,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.12),
-                    ),
+                    color: richEmerald,
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(
                     Icons.arrow_back_ios_new_rounded,
                     color: Colors.white,
-                    size: 16,
+                    size: 18,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              // Quran Emblem Icon
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      green.withValues(alpha: 0.25),
-                      card2,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: green.withValues(alpha: 0.6),
-                    width: 1.3,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: green.withValues(alpha: 0.20),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.menu_book_rounded,
-                  color: green,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
+              const SizedBox(width: 14),
+              const Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          'HOLY QURAN',
-                          style: TextStyle(
-                            color: goldAccent,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.8,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          width: 5,
-                          height: 5,
-                          decoration: const BoxDecoration(
-                            color: green,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      'Holy Quran',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.3,
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    const Text(
+                    SizedBox(height: 2),
+                    Text(
                       'Read & Reflect',
                       style: TextStyle(
-                        color: whiteText,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.2,
+                        color: Color(0xFFDCEAE4),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                   ],
+                ),
+              ),
+              const Text(
+                'الْقُرْآنُ',
+                textDirection: TextDirection.rtl,
+                style: TextStyle(
+                  color: mutedGold,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 10),
-          // Calligraphy Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF0E1A14),
-                  Color(0xFF08120D),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: gold.withValues(alpha: 0.35),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '114 Surahs • 30 Paras',
-                      style: TextStyle(
-                        color: gold.withValues(alpha: 0.9),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      'Complete Mushaf',
-                      style: TextStyle(
-                        color: greyText.withValues(alpha: 0.8),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-                const Text(
-                  'الْقُرْآنُ الْكَرِيمُ',
-                  textDirection: TextDirection.rtl,
-                  style: TextStyle(
-                    color: gold,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -488,37 +419,29 @@ class _QuranScreenState extends State<QuranScreen>
   // ==========================================================
   // SURAHS / PARAS TAB SELECTOR
   // ==========================================================
-
   Widget _selector() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(18, 6, 18, 0),
-      height: 48,
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      height: 46,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        color: surfaceWhite,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderSubtle),
       ),
       child: TabBar(
         controller: _tabController,
         dividerColor: Colors.transparent,
         indicator: BoxDecoration(
-          color: greenDark,
-          border: Border.all(color: green.withValues(alpha: 0.55), width: 1.1),
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: green.withValues(alpha: 0.18),
-              blurRadius: 8,
-            ),
-          ],
+          color: secondarySurface,
+          border: Border.all(color: richEmerald, width: 1.2),
+          borderRadius: BorderRadius.circular(10),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
-        labelColor: green,
-        unselectedLabelColor: const Color(0xFF8B918E),
-        labelStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900),
-        unselectedLabelStyle:
-            const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+        labelColor: richEmerald,
+        unselectedLabelColor: textSecondary,
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
         tabs: const [
           Tab(text: 'Surahs'),
           Tab(text: 'Paras'),
@@ -530,49 +453,46 @@ class _QuranScreenState extends State<QuranScreen>
   // ==========================================================
   // SEARCH BAR
   // ==========================================================
-
   Widget _search() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 8, 18, 6),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
       child: Container(
-        height: 48,
+        height: 46,
         decoration: BoxDecoration(
-          color: card,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.09)),
+          color: surfaceWhite,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderSubtle),
         ),
         child: TextField(
           controller: _searchController,
           onChanged: (value) => setState(() => searchText = value),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14.5,
-            fontWeight: FontWeight.w600,
+          style: TextStyle(
+            color: textPrimary,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
-          cursorColor: green,
+          cursorColor: richEmerald,
           decoration: InputDecoration(
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(vertical: 12),
-            prefixIcon:
-                const Icon(Icons.search_rounded, color: green, size: 22),
+            prefixIcon: Icon(Icons.search_rounded, color: textSecondary, size: 20),
             hintText: _tabController.index == 0
                 ? 'Search Surah by name, number...'
                 : 'Search Para by name, number...',
             hintStyle: TextStyle(
-              color: greyText.withValues(alpha: 0.7),
+              color: textSecondary.withValues(alpha: 0.7),
               fontSize: 13,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w400,
             ),
             suffixIcon: searchText.isEmpty
                 ? null
                 : IconButton(
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() => searchText = '');
-                    },
-                    icon: const Icon(Icons.close_rounded,
-                        color: Colors.white54, size: 18),
-                  ),
+              onPressed: () {
+                _searchController.clear();
+                setState(() => searchText = '');
+              },
+              icon: Icon(Icons.close_rounded, color: textSecondary, size: 18),
+            ),
           ),
         ),
       ),
@@ -582,7 +502,6 @@ class _QuranScreenState extends State<QuranScreen>
   // ==========================================================
   // SURAHS LIST
   // ==========================================================
-
   Widget _surahList() {
     final q = searchText.trim().toLowerCase();
     final filtered = surahs.where((s) {
@@ -597,7 +516,7 @@ class _QuranScreenState extends State<QuranScreen>
 
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(18, 4, 18, 100),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
       itemCount: filtered.length,
       itemBuilder: (_, index) => _surahCard(filtered[index]),
     );
@@ -606,7 +525,6 @@ class _QuranScreenState extends State<QuranScreen>
   // ==========================================================
   // PARAS LIST
   // ==========================================================
-
   Widget _paraList() {
     final q = searchText.trim().toLowerCase();
     final filtered = paras.where((p) {
@@ -621,20 +539,18 @@ class _QuranScreenState extends State<QuranScreen>
 
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(18, 4, 18, 100),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
       itemCount: filtered.length,
       itemBuilder: (_, index) => _paraCard(filtered[index]),
     );
   }
 
   // ==========================================================
-  // SURAH CARD (LUXURY GLASSMORPHIC STYLE)
+  // SURAH CARD
   // ==========================================================
-
   Widget _surahCard(Map<String, dynamic> s) {
     final String id = 'surah_${s['number']}';
-    final bool isMeccan =
-        s['revelation'].toString().toLowerCase().contains('meccan');
+    final bool isMeccan = s['revelation'].toString().toLowerCase().contains('meccan');
 
     return GestureDetector(
       onTap: () {
@@ -650,28 +566,17 @@ class _QuranScreenState extends State<QuranScreen>
         );
       },
       child: Container(
-        height: 78,
-        margin: const EdgeInsets.only(bottom: 9),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0F1813),
-              Color(0xFF09100C),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.08),
-            width: 1,
-          ),
+          color: surfaceWhite,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderSubtle),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
@@ -679,7 +584,7 @@ class _QuranScreenState extends State<QuranScreen>
           children: [
             // Number Emblem
             _numberEmblem(s['number'].toString()),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             // Title & Details
             Expanded(
               child: Column(
@@ -690,60 +595,52 @@ class _QuranScreenState extends State<QuranScreen>
                     s['name'].toString(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: textPrimary,
                       fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.2,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.2,
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Row(
+                  const SizedBox(height: 4),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    runSpacing: 4,
                     children: [
-                      Flexible(
-                        child: Text(
-                          s['meaning'].toString(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: greyText.withValues(alpha: 0.85),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                          ),
+                      Text(
+                        s['meaning'].toString(),
+                        style: TextStyle(
+                          color: textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
-                      const SizedBox(width: 5),
                       Text(
                         '• ${s['verses']} Ayahs',
                         style: TextStyle(
-                          color: greyText.withValues(alpha: 0.85),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                          color: textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
-                      const SizedBox(width: 6),
                       // Revelation Pill Tag
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 5, vertical: 1.5),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: isMeccan
-                              ? gold.withValues(alpha: 0.14)
-                              : green.withValues(alpha: 0.14),
-                          borderRadius: BorderRadius.circular(4),
+                          color: isMeccan ? mutedGold.withValues(alpha: 0.12) : secondarySurface,
+                          borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: isMeccan
-                                ? gold.withValues(alpha: 0.4)
-                                : green.withValues(alpha: 0.4),
-                            width: 0.7,
+                            color: isMeccan ? mutedGold.withValues(alpha: 0.3) : richEmerald.withValues(alpha: 0.3),
+                            width: 0.8,
                           ),
                         ),
                         child: Text(
                           isMeccan ? 'Makki' : 'Madani',
                           style: TextStyle(
-                            color: isMeccan ? gold : green,
-                            fontSize: 8.5,
-                            fontWeight: FontWeight.w800,
+                            color: isMeccan ? mutedGold : richEmerald,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -752,7 +649,7 @@ class _QuranScreenState extends State<QuranScreen>
                 ],
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             // Arabic Name
             Text(
               s['arabic'].toString(),
@@ -760,12 +657,12 @@ class _QuranScreenState extends State<QuranScreen>
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: gold,
+                color: mutedGold,
                 fontSize: 18,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 6),
             // Favorite Button
             FutureBuilder<bool>(
               future: FavoritesService.isFavorite(id),
@@ -774,10 +671,8 @@ class _QuranScreenState extends State<QuranScreen>
                 return IconButton(
                   splashRadius: 18,
                   icon: Icon(
-                    isFav
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    color: isFav ? Colors.redAccent : const Color(0xFF6F7773),
+                    isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    color: isFav ? Colors.redAccent : textSecondary,
                     size: 20,
                   ),
                   onPressed: () async {
@@ -785,8 +680,7 @@ class _QuranScreenState extends State<QuranScreen>
                       id: id,
                       category: 'Quran',
                       title: 'Surah ${s['name']} (${s['arabic']})',
-                      content:
-                          '${s['meaning']} • ${s['verses']} Ayahs • ${s['revelation']} Surah',
+                      content: '${s['meaning']}\n${s['verses']} Ayahs • ${s['revelation']} Surah',
                       subtitle: 'Surah #${s['number']}',
                     );
                     setState(() {});
@@ -803,7 +697,6 @@ class _QuranScreenState extends State<QuranScreen>
   // ==========================================================
   // PARA CARD
   // ==========================================================
-
   Widget _paraCard(Map<String, String> p) {
     final String id = 'para_${p['number']}';
     return GestureDetector(
@@ -819,35 +712,24 @@ class _QuranScreenState extends State<QuranScreen>
         );
       },
       child: Container(
-        height: 76,
-        margin: const EdgeInsets.only(bottom: 9),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0F1813),
-              Color(0xFF09100C),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.08),
-            width: 1,
-          ),
+          color: surfaceWhite,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderSubtle),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.35),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
         child: Row(
           children: [
             _numberEmblem(p['number']!),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -855,21 +737,21 @@ class _QuranScreenState extends State<QuranScreen>
                 children: [
                   Text(
                     p['name']!,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: textPrimary,
                       fontSize: 15,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 4),
                   Text(
                     p['meaning']!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      color: greyText.withValues(alpha: 0.85),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
+                      color: textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
                     ),
                   ),
                 ],
@@ -881,12 +763,12 @@ class _QuranScreenState extends State<QuranScreen>
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: gold,
+                color: mutedGold,
                 fontSize: 17,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 6),
             FutureBuilder<bool>(
               future: FavoritesService.isFavorite(id),
               builder: (context, snapshot) {
@@ -894,10 +776,8 @@ class _QuranScreenState extends State<QuranScreen>
                 return IconButton(
                   splashRadius: 18,
                   icon: Icon(
-                    isFav
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    color: isFav ? Colors.redAccent : const Color(0xFF6F7773),
+                    isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    color: isFav ? Colors.redAccent : textSecondary,
                     size: 20,
                   ),
                   onPressed: () async {
@@ -922,39 +802,22 @@ class _QuranScreenState extends State<QuranScreen>
   // ==========================================================
   // NUMBER EMBLEM BADGE
   // ==========================================================
-
   Widget _numberEmblem(String number) {
     return Container(
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            gold.withValues(alpha: 0.20),
-            greenDark,
-          ],
-        ),
+        color: secondarySurface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: gold.withValues(alpha: 0.5),
-          width: 1.1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: gold.withValues(alpha: 0.12),
-            blurRadius: 6,
-          ),
-        ],
+        border: Border.all(color: borderSubtle),
       ),
       child: Center(
         child: Text(
           number,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: textPrimary,
             fontSize: 13,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -962,71 +825,62 @@ class _QuranScreenState extends State<QuranScreen>
   }
 
   // ==========================================================
-  // FLOATING FROSTED DOCK NAVIGATION BAR (IDENTICAL TO HOME)
+  // FLOATING FROSTED DOCK NAVIGATION BAR
   // ==========================================================
-
   Widget _buildBottomNavigation() {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          height: 68,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF09140F).withValues(alpha: 0.90),
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.12),
-              width: 1.1,
+    return Container(
+      height: 66,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      decoration: BoxDecoration(
+        color: surfaceWhite,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _navButton(
+            icon: Icons.home_filled,
+            label: 'Home',
+            active: false,
+            action: () => _navigateToScreen(const HomeScreen()),
+          ),
+          _navButton(
+            icon: Icons.menu_book_rounded,
+            label: 'Quran',
+            active: true,
+            action: () {},
+          ),
+          _navButton(
+            icon: Icons.explore_rounded,
+            label: 'Qibla',
+            active: false,
+            action: () => _navigateToScreen(const QiblaScreen()),
+          ),
+          _navButton(
+            customIcon: const LiveTasbeehIcon(
+              size: 20,
+              color: richEmerald,
+              animate: true,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.65),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            label: 'Tasbih',
+            active: false,
+            action: () => _navigateToScreen(const TasbeehScreen()),
           ),
-          child: Row(
-            children: [
-              _navButton(
-                icon: Icons.home_rounded,
-                label: 'Home',
-                active: false,
-                action: () => _navigateToScreen(const HomeScreen()),
-              ),
-              _navButton(
-                icon: Icons.menu_book_rounded,
-                label: 'Quran',
-                active: true,
-                action: () {},
-              ),
-              _navButton(
-                icon: Icons.explore_rounded,
-                label: 'Qibla',
-                active: false,
-                action: () => _navigateToScreen(const QiblaScreen()),
-              ),
-              _navButton(
-                customIcon: const LiveTasbeehIcon(
-                  size: 23,
-                  color: Color(0xFFB0BEC5),
-                  animate: true,
-                ),
-                label: 'Tasbih',
-                active: false,
-                action: () => _navigateToScreen(const TasbeehScreen()),
-              ),
-              _navButton(
-                icon: Icons.settings_rounded,
-                label: 'Settings',
-                active: false,
-                action: () => _navigateToScreen(const SettingsScreen()),
-              ),
-            ],
+          _navButton(
+            icon: Icons.settings_rounded,
+            label: 'Settings',
+            active: false,
+            action: () => _navigateToScreen(const SettingsScreen()),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -1038,56 +892,41 @@ class _QuranScreenState extends State<QuranScreen>
     required bool active,
     required VoidCallback action,
   }) {
-    final iconColor = active ? green : const Color(0xFFB0BEC5);
+    final iconColor = active ? richEmerald : textInactive;
+    final textColor = active ? richEmerald : textSecondary;
 
     return Expanded(
       child: GestureDetector(
         onTap: action,
         behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          margin: const EdgeInsets.symmetric(horizontal: 2),
+        child: Container(
           decoration: BoxDecoration(
-            color: active ? greenDark : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            border: active
-                ? Border.all(
-                    color: green.withValues(alpha: 0.55),
-                    width: 1,
-                  )
-                : null,
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: green.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                    )
-                  ]
-                : [],
+            color: active ? secondarySurface : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                width: 24,
-                height: 24,
+                width: 22,
+                height: 22,
                 child: Center(
                   child: customIcon ??
                       Icon(
                         icon,
                         color: iconColor,
-                        size: 22,
+                        size: 20,
                       ),
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: iconColor,
-                  fontSize: 9.5,
-                  fontWeight: active ? FontWeight.w900 : FontWeight.w600,
+                  color: textColor,
+                  fontSize: 10,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                  letterSpacing: -0.2,
                 ),
               ),
             ],
@@ -1101,10 +940,10 @@ class _QuranScreenState extends State<QuranScreen>
     return Center(
       child: Text(
         text,
-        style: const TextStyle(
-          color: Colors.white70,
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
+        style: TextStyle(
+          color: textSecondary,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
@@ -1112,9 +951,8 @@ class _QuranScreenState extends State<QuranScreen>
 }
 
 // ==========================================================
-// QURAN READER SCREEN
+// QURAN READER SCREEN (Forced Light Mode for Clear Reading)
 // ==========================================================
-
 class QuranReaderScreen extends StatefulWidget {
   final int? startSurah;
   final int? startPara;
@@ -1134,6 +972,9 @@ class QuranReaderScreen extends StatefulWidget {
 }
 
 class _QuranReaderScreenState extends State<QuranReaderScreen> {
+  // ==========================================================
+  // STATE VARIABLES
+  // ==========================================================
   static const int totalPages = 604;
   late PageController _pageController;
 
@@ -1143,6 +984,9 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
   final Map<int, int> _pageCdnIndex = {};
   final Map<int, List<dynamic>> _pageTextCache = {};
 
+  // ==========================================================
+  // DATA SOURCES (Preserved 100%)
+  // ==========================================================
   static const List<int> paraPages = [
     1, 22, 42, 62, 82, 102, 122, 142, 162, 182,
     202, 222, 242, 262, 282, 302, 322, 342, 362, 382,
@@ -1160,19 +1004,18 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
     602, 603, 603, 603, 604, 604, 604, 604
   ];
 
+  // ==========================================================
+  // INITIALIZATION & LIFECYCLE
+  // ==========================================================
   @override
   void initState() {
     super.initState();
     currentTitle = widget.title;
 
     int page = 1;
-    if (widget.startSurah != null &&
-        widget.startSurah! >= 1 &&
-        widget.startSurah! <= 114) {
+    if (widget.startSurah != null && widget.startSurah! >= 1 && widget.startSurah! <= 114) {
       page = surahPages[widget.startSurah! - 1];
-    } else if (widget.startPara != null &&
-        widget.startPara! >= 1 &&
-        widget.startPara! <= 30) {
+    } else if (widget.startPara != null && widget.startPara! >= 1 && widget.startPara! <= 30) {
       page = paraPages[widget.startPara! - 1];
     }
 
@@ -1180,6 +1023,21 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
     _pageController = PageController(initialPage: currentPage - 1);
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _precacheNearbyPages(currentPage);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // ==========================================================
+  // LOGIC & API (Preserved 100%)
+  // ==========================================================
   void _handleBack() {
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -1188,12 +1046,6 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
         MaterialPageRoute(builder: (context) => const HomeScreen()),
       );
     }
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _precacheNearbyPages(currentPage);
   }
 
   void _precacheNearbyPages(int page) {
@@ -1220,6 +1072,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
 
   Future<List<dynamic>> _fetchPageText(int page) async {
     if (_pageTextCache.containsKey(page)) return _pageTextCache[page]!;
+
     final response = await http
         .get(Uri.parse('https://api.alquran.cloud/v1/page/$page/quran-indopak'))
         .timeout(const Duration(seconds: 4));
@@ -1235,29 +1088,37 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
     throw Exception();
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+  void _goTo(int page) {
+    _pageController.animateToPage(
+      page - 1,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
+    );
   }
 
+  // ==========================================================
+  // WIDGET BUILDERS (Forced Light Theme for Quran Reading)
+  // ==========================================================
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBack();
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _readerHeader(),
-              Expanded(child: _pages()),
-              _readerControls(),
-            ],
+    return Theme(
+      data: ThemeData.light(),
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          _handleBack();
+        },
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          body: SafeArea(
+            child: Column(
+              children: [
+                _readerHeader(),
+                Expanded(child: _pages()),
+                _readerControls(),
+              ],
+            ),
           ),
         ),
       ),
@@ -1270,15 +1131,16 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: const BoxDecoration(
-        color: Color(0xFF090D0B),
-        border: Border(bottom: BorderSide(color: Color(0xFF202522))),
+        color: Color(0xFF164E3B),
+        border: Border(
+          bottom: BorderSide(color: Color(0xFFD5DFDA)),
+        ),
       ),
       child: Row(
         children: [
           IconButton(
             onPressed: _handleBack,
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: Colors.white, size: 18),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
           ),
           Expanded(
             child: Column(
@@ -1291,15 +1153,15 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 Text(
                   'Page $currentPage of $totalPages',
                   style: const TextStyle(
-                    color: Color(0xFF00E676),
+                    color: Color(0xFFA9D4C1),
                     fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -1311,10 +1173,8 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
               final isFav = snapshot.data ?? false;
               return IconButton(
                 icon: Icon(
-                  isFav
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
-                  color: isFav ? Colors.redAccent : const Color(0xFF00E676),
+                  isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  color: isFav ? Colors.redAccent : Colors.white,
                   size: 22,
                 ),
                 onPressed: () async {
@@ -1322,8 +1182,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                     id: id,
                     category: 'Quran',
                     title: '$currentTitle (Page $currentPage)',
-                    content:
-                        'Saved Quran Page #$currentPage from $currentTitle.',
+                    content: 'Saved Quran Page #$currentPage from $currentTitle.',
                     subtitle: 'Holy Quran Page',
                   );
                   setState(() {});
@@ -1368,7 +1227,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(
-                    color: Color(0xFF00E676),
+                    color: Color(0xFF1F6B52),
                     strokeWidth: 2,
                   ),
                 ),
@@ -1383,7 +1242,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(
-                    color: Color(0xFF00E676),
+                    color: Color(0xFF1F6B52),
                     strokeWidth: 2,
                   ),
                 ),
@@ -1405,7 +1264,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
               width: 24,
               height: 24,
               child: CircularProgressIndicator(
-                color: Color(0xFF00E676),
+                color: Color(0xFF1F6B52),
                 strokeWidth: 2,
               ),
             ),
@@ -1448,41 +1307,36 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: const BoxDecoration(
-        color: Color(0xFF090D0B),
-        border: Border(top: BorderSide(color: Color(0xFF202522))),
+        color: Color(0xFF164E3B),
+        border: Border(
+          top: BorderSide(color: Color(0xFFD5DFDA)),
+        ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
+          // Left Button (<) -> Yeh ab NEXT (aage wale) page par lekar jayega
           IconButton(
-            icon: const Icon(Icons.chevron_right_rounded,
-                color: Colors.white, size: 28),
-            onPressed: currentPage > 1 ? () => _goTo(currentPage - 1) : null,
+            icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 28),
+            onPressed: currentPage < totalPages ? () => _goTo(currentPage + 1) : null,
           ),
+
           Text(
             'Page $currentPage / $totalPages',
             style: const TextStyle(
-              color: Color(0xFF00E676),
+              color: Color(0xFFA9D4C1),
               fontSize: 13,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
             ),
           ),
+
+          // Right Button (>) -> Yeh ab BACK (pichle) page par lekar aayega
           IconButton(
-            icon: const Icon(Icons.chevron_left_rounded,
-                color: Colors.white, size: 28),
-            onPressed:
-                currentPage < totalPages ? () => _goTo(currentPage + 1) : null,
+            icon: const Icon(Icons.chevron_right_rounded, color: Colors.white, size: 28),
+            onPressed: currentPage > 1 ? () => _goTo(currentPage - 1) : null,
           ),
         ],
       ),
-    );
-  }
-
-  void _goTo(int page) {
-    _pageController.animateToPage(
-      page - 1,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOutCubic,
     );
   }
 }

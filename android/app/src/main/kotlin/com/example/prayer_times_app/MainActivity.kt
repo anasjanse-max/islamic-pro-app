@@ -1,5 +1,6 @@
-package com.example.prayer_times_app
+package com.anasjan.prayertimes
 
 import io.flutter.embedding.android.FlutterActivity
 
-class MainActivity : FlutterActivity()
+class MainActivity: FlutterActivity() {
+}

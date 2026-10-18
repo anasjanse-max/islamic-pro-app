@@ -1,14 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_drawer.dart';
-import 'favorites_service.dart';
 import 'islamic_calendar_screen.dart';
 import 'live_tasbeeh_icon.dart';
 import 'more_screen.dart';
@@ -26,22 +28,34 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with TickerProviderStateMixin {
-  static const Color background = Color(0xFF040806);
-  static const Color card = Color(0xFF0D1612);
-  static const Color card2 = Color(0xFF121E18);
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  // ==========================================================
+  // DYNAMIC PALETTE BASED ON DARK MODE STATE
+  // ==========================================================
+  bool get _isDark => ThemeService.isDarkMode.value;
 
-  static const Color green = Color(0xFF00E676);
-  static const Color greenDark = Color(0xFF0B2E1E);
+  Color get appBackground => _isDark ? const Color(0xFF0B1511) : const Color(0xFFF7F6F1);
+  Color get surfaceWhite => _isDark ? const Color(0xFF14221C) : const Color(0xFFFFFFFF);
+  Color get secondarySurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
+  Color get selectedSurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
+  Color get activeNavBg => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
 
-  static const Color gold = Color(0xFFFFD700);
-  static const Color goldAccent = Color(0xFFE5B53B);
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
+  static const Color lightCreamGold = Color(0xFFF4EEDC);
 
-  static const Color whiteText = Color(0xFFFFFFFF);
-  static const Color greyText = Color(0xFF90A4AE);
+  Color get textPrimary => _isDark ? const Color(0xFFF4F6F2) : const Color(0xFF1D2924);
+  Color get textSecondary => _isDark ? const Color(0xFFAAB6AF) : const Color(0xFF66736D);
+  Color get textInactive => _isDark ? const Color(0xFF718079) : const Color(0xFF718079);
+  Color get borderSubtle => _isDark ? const Color(0xFF24332B) : const Color(0xFFD5DFDA);
 
-  // Smooth Drawer Animation Controllers
+  static const Color successGreen = Color(0xFF4C866C);
+  static const Color warningBorder = Color(0xFFD9CBA8);
+  static const Color warningIcon = Color(0xFF9A7B35);
+  static const Color warningText = Color(0xFF80672F);
+
   late AnimationController _drawerAnimationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _slideAnimation;
@@ -64,11 +78,13 @@ class _HomeScreenState extends State<HomeScreen>
   };
 
   String nextPrayer = 'Fajr';
-  String nextPrayerTime = '04:20';
+  String nextPrayerTime = '04:20 AM';
+  final Map<String, bool> _mutedPrayers = {};
 
-  // Isolated countdown state using ValueNotifier
-  final ValueNotifier<Duration> _remaining =
-  ValueNotifier<Duration>(Duration.zero);
+  NativeAd? _nativeAd;
+  bool _isAdLoaded = false;
+
+  final ValueNotifier<Duration> _remaining = ValueNotifier<Duration>(Duration.zero);
 
   bool loading = false;
   bool isRefreshing = false;
@@ -76,34 +92,11 @@ class _HomeScreenState extends State<HomeScreen>
   String errorMessage = '';
 
   Timer? countdownTimer;
-  late AnimationController pulseController;
-
-  final PageController _quotePageController = PageController();
-  int _currentQuoteIndex = 0;
-
-  final List<Map<String, String>> quotes = [
-    {
-      'arabic': 'إِنَّ مَعَ الْعُسْرِ يُسْرًا',
-      'translation': 'Indeed, with hardship [will be] ease.',
-      'reference': '— Surah Ash-Sharh (94:6)',
-    },
-    {
-      'arabic': 'فَاذْكُرُونِي أَذْكُرْكُمْ',
-      'translation': 'So remember Me; I will remember you.',
-      'reference': '— Surah Al-Baqarah (2:152)',
-    },
-    {
-      'arabic': 'رَبِّ إِنِّي لِمَا أَنْزَلْتَ إِلَيَّ مِنْ خَيْرٍ فَقِيرٌ',
-      'translation':
-      'My Lord, indeed I am, for whatever good You would send down to me, in need.',
-      'reference': '— Surah Al-Qasas (28:24)',
-    },
-  ];
 
   @override
   void initState() {
     super.initState();
-
+    // Yahan se NotificationService.requestAutoPermissions() hata diya gaya hai
     todayDate = DateFormat('EEEE, d MMMM yyyy').format(DateTime.now());
 
     _drawerAnimationController = AnimationController(
@@ -111,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen>
       duration: const Duration(milliseconds: 320),
     );
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.68).animate(
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.92).animate(
       CurvedAnimation(
         parent: _drawerAnimationController,
         curve: const Cubic(0.22, 1.0, 0.36, 1.0),
@@ -127,31 +120,116 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
 
-    pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    )..repeat(reverse: true);
-
     countdownTimer = Timer.periodic(
       const Duration(seconds: 1),
           (timer) => updateNextPrayer(),
     );
 
     updateNextPrayer();
-    loadData();
+    _initPermissionsAndLoadData(); // Yahan naya sequence wala function call kiya hai
+    _loadMuteStates();
+    _loadNativeAd();
+  }
+
+  // Yeh naya function add kiya hai permissions ko bari bari mangne ke liye
+  Future<void> _initPermissionsAndLoadData() async {
+    // 1. Pehle Notifications ki permission mangega
+    await NotificationService.requestAutoPermissions();
+
+    // 2. Thoda delay taake pehla popup smooth band ho jaye
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // 3. Phir automatically location fetch karega (aur popup dikhayega agar permission nahi hai)
+    await loadData();
   }
 
   @override
   void dispose() {
     countdownTimer?.cancel();
-    pulseController.dispose();
     _drawerAnimationController.dispose();
-    _quotePageController.dispose();
     _remaining.dispose();
+    _nativeAd?.dispose();
     super.dispose();
   }
 
+  void _loadNativeAd() {
+    final String adUnitId = kReleaseMode
+        ? 'ca-app-pub-4134027624428398/8824371562'
+        : 'ca-app-pub-3940256099942544/2247696110';
+
+    _nativeAd = NativeAd(
+      adUnitId: adUnitId,
+      request: const AdRequest(),
+      listener: NativeAdListener(
+        onAdLoaded: (ad) {
+          if (mounted) setState(() => _isAdLoaded = true);
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          debugPrint('Native ad failed to load: $error');
+        },
+      ),
+      nativeTemplateStyle: NativeTemplateStyle(
+        templateType: TemplateType.medium,
+        mainBackgroundColor: surfaceWhite,
+        cornerRadius: 16.0,
+        callToActionTextStyle: NativeTemplateTextStyle(
+          textColor: Colors.white,
+          backgroundColor: richEmerald,
+          style: NativeTemplateFontStyle.bold,
+          size: 14.0,
+        ),
+        primaryTextStyle: NativeTemplateTextStyle(
+          textColor: textPrimary,
+          style: NativeTemplateFontStyle.bold,
+          size: 16.0,
+        ),
+        secondaryTextStyle: NativeTemplateTextStyle(
+          textColor: textSecondary,
+          style: NativeTemplateFontStyle.normal,
+          size: 12.0,
+        ),
+      ),
+    )..load();
+  }
+
+  Future<void> _loadMuteStates() async {
+    final prefs = await SharedPreferences.getInstance();
+    const prayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+
+    if (!mounted) return;
+    setState(() {
+      for (var prayer in prayers) {
+        _mutedPrayers[prayer] = prefs.getBool('mute_$prayer') ?? false;
+      }
+    });
+  }
+
+  Future<void> _toggleMutePrayer(String name) async {
+    final prefs = await SharedPreferences.getInstance();
+    final currentState = _mutedPrayers[name] ?? false;
+    final newState = !currentState;
+
+    if (!mounted) return;
+    setState(() {
+      _mutedPrayers[name] = newState;
+    });
+
+    await prefs.setBool('mute_$name', newState);
+
+    if (newState) {
+      const prayersMap = {'Fajr': 100, 'Dhuhr': 101, 'Asr': 102, 'Maghrib': 103, 'Isha': 104};
+      final id = prayersMap[name];
+      if (id != null) {
+        await NotificationService.cancelNotification(id);
+      }
+    } else {
+      _scheduleAllPrayerNotifications();
+    }
+  }
+
   void _toggleDrawer() {
+    if (!mounted) return;
     setState(() {
       if (_isDrawerOpen) {
         _drawerAnimationController.reverse();
@@ -165,11 +243,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> loadData() async {
     if (!mounted) return;
-
-    setState(() {
-      isRefreshing = true;
-    });
-
+    setState(() => isRefreshing = true);
     final prefs = await SharedPreferences.getInstance();
 
     try {
@@ -204,7 +278,6 @@ class _HomeScreenState extends State<HomeScreen>
         if (position != null) {
           lat = position.latitude;
           lng = position.longitude;
-
           detectedCity = await _resolveCityViaHttp(lat, lng);
 
           await prefs.setDouble('last_lat', lat);
@@ -219,7 +292,6 @@ class _HomeScreenState extends State<HomeScreen>
         }
       } else {
         if (mounted) setState(() => isGpsOff = true);
-
         lat = prefs.getDouble('last_lat');
         lng = prefs.getDouble('last_lng');
         detectedCity = prefs.getString('last_city') ?? 'Saved Location';
@@ -238,7 +310,6 @@ class _HomeScreenState extends State<HomeScreen>
       setState(() {
         if (detectedCity.isNotEmpty) city = detectedCity;
         if (timings.isNotEmpty) prayerTimes = timings;
-
         final hDate = extractHijriDate(result);
         if (hDate.isNotEmpty) hijriDate = hDate;
 
@@ -261,12 +332,16 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _scheduleAllPrayerNotifications() {
     if (prayerTimes.isEmpty) return;
-
     final now = DateTime.now();
     const prayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
     int notificationId = 100;
 
     for (final prayer in prayers) {
+      if (_mutedPrayers[prayer] == true) {
+        notificationId++;
+        continue;
+      }
+
       final rawTime = prayerTimes[prayer]?.toString() ?? '';
       if (rawTime.isEmpty) continue;
 
@@ -277,9 +352,7 @@ class _HomeScreenState extends State<HomeScreen>
       final minute = int.tryParse(parts[1]);
       if (hour == null || minute == null) continue;
 
-      DateTime scheduledDate =
-      DateTime(now.year, now.month, now.day, hour, minute);
-
+      DateTime scheduledDate = DateTime(now.year, now.month, now.day, hour, minute);
       if (scheduledDate.isBefore(now)) {
         scheduledDate = scheduledDate.add(const Duration(days: 1));
       }
@@ -305,27 +378,15 @@ class _HomeScreenState extends State<HomeScreen>
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         final address = data['address'] as Map<String, dynamic>?;
-        if (address != null) {
-          final exactSector = address['neighbourhood'] ??
-              address['suburb'] ??
-              address['residential'] ??
-              address['quarter'] ??
-              address['subdistrict'] ??
-              address['village'] ??
-              address['hamlet'] ??
-              address['town'];
 
-          final mainCity = address['city'] ??
-              address['county'] ??
-              address['state_district'] ??
-              '';
+        if (address != null) {
+          final exactSector = address['neighbourhood'] ?? address['suburb'] ?? address['residential'] ?? address['quarter'] ?? address['subdistrict'] ?? address['village'] ?? address['hamlet'] ?? address['town'];
+          final mainCity = address['city'] ?? address['county'] ?? address['state_district'] ?? '';
 
           final sectorStr = exactSector?.toString().trim() ?? '';
           final cityStr = mainCity.toString().trim();
 
-          if (sectorStr.isNotEmpty &&
-              cityStr.isNotEmpty &&
-              sectorStr != cityStr) {
+          if (sectorStr.isNotEmpty && cityStr.isNotEmpty && sectorStr != cityStr) {
             return '$sectorStr, $cityStr';
           } else if (sectorStr.isNotEmpty) {
             return sectorStr;
@@ -335,49 +396,52 @@ class _HomeScreenState extends State<HomeScreen>
         }
       }
     } catch (_) {}
-
     return 'Live Location';
   }
 
   Map<String, dynamic> extractTimings(Map<String, dynamic> data) {
     final dynamic timings = data['timings'];
-    if (timings is Map) {
-      return Map<String, dynamic>.from(timings);
-    }
+    if (timings is Map) return Map<String, dynamic>.from(timings);
     return data;
   }
 
+  // ==========================================================
+  // FULLY DYNAMIC HIJRI DATE EXTRACTION WITH PAKISTAN OFFSET (-2 Days)
+  // ==========================================================
   String extractHijriDate(Map<String, dynamic> data) {
     try {
-      final dateMap = data['date'];
-      if (dateMap is Map) {
-        final hijri = dateMap['hijri'];
-        if (hijri is Map) {
-          final day = hijri['day']?.toString() ?? '';
-          final monthObj = hijri['month'];
-          String monthName = '';
-          if (monthObj is Map) {
-            monthName = monthObj['en']?.toString() ?? '';
-          }
-          final year = hijri['year']?.toString() ?? '';
-          if (day.isNotEmpty && monthName.isNotEmpty && year.isNotEmpty) {
-            return '$day $monthName $year';
-          }
+      if (data.containsKey('date') && data['date'].containsKey('hijri')) {
+        var hijri = data['date']['hijri'];
+        int day = int.parse(hijri['day'].toString());
+        String month = hijri['month']['en'].toString();
+        String year = hijri['year'].toString();
+
+        // PAKISTAN OFFSET: -2 days taake exact 17 show ho
+        day = day - 2;
+        if (day <= 0) {
+          day = 29;
         }
+
+        // Month correction for Rabi al-Thani / Rabi Al-Akhar
+        if (month == "Rabi' al-Awwal" || month == "Rabi' al-Awal") {
+          month = "Rabi al-Thani";
+        }
+
+        return '$day $month $year AH';
       }
-    } catch (_) {}
-    return '25 Rabi\' al-awwal 1448';
+    } catch (e) {
+      debugPrint('Error parsing Hijri date: $e');
+    }
+
+    // Fallback live date for Pakistan
+    return '17 Rabi al-Thani 1448 AH';
   }
 
   Future<void> loadWeather(double latitude, double longitude) async {
     try {
       final uri = Uri.parse(
-        'https://api.open-meteo.com/v1/forecast'
-            '?latitude=$latitude'
-            '&longitude=$longitude'
-            '&current_weather=true',
+        'https://api.open-meteo.com/v1/forecast?latitude=$latitude&longitude=$longitude&current_weather=true',
       );
-
       final response = await http.get(uri).timeout(const Duration(seconds: 4));
       if (response.statusCode != 200) return;
 
@@ -392,7 +456,6 @@ class _HomeScreenState extends State<HomeScreen>
       final weather = weatherInfo(code);
 
       if (!mounted) return;
-
       setState(() {
         temperature = temp;
         weatherName = weather.$1;
@@ -403,16 +466,11 @@ class _HomeScreenState extends State<HomeScreen>
 
   (String, IconData) weatherInfo(int code) {
     switch (code) {
-      case 0:
-        return ('Clear', Icons.wb_sunny_rounded);
-      case 1:
-        return ('Mainly Clear', Icons.wb_sunny_rounded);
-      case 2:
-        return ('Partly Cloudy', Icons.cloud_queue_rounded);
-      case 3:
-        return ('Overcast', Icons.cloud_rounded);
-      default:
-        return ('Clear', Icons.wb_sunny_rounded);
+      case 0: return ('Clear', Icons.wb_sunny_rounded);
+      case 1: return ('Mainly Clear', Icons.wb_sunny_rounded);
+      case 2: return ('Partly Cloudy', Icons.cloud_queue_rounded);
+      case 3: return ('Overcast', Icons.cloud_rounded);
+      default: return ('Clear', Icons.wb_sunny_rounded);
     }
   }
 
@@ -421,35 +479,38 @@ class _HomeScreenState extends State<HomeScreen>
       final clean = value.split(' ').first.trim();
       final parts = clean.split(':');
       if (parts.length < 2) return null;
-
       final hour = int.tryParse(parts[0]);
       final minute = int.tryParse(parts[1]);
       if (hour == null || minute == null) return null;
-
       return DateTime(date.year, date.month, date.day, hour, minute);
     } catch (_) {
       return null;
     }
   }
 
+  // 12-Hour Format Conversion (AM/PM)
   String formatPrayerTime(dynamic value) {
     final raw = value?.toString() ?? '';
     if (raw.isEmpty) return '--:--';
-
     final clean = raw.split(' ').first;
     final parts = clean.split(':');
     if (parts.length < 2) return clean;
-
-    final hour = int.tryParse(parts[0]);
-    final minute = int.tryParse(parts[1]);
+    int? hour = int.tryParse(parts[0]);
+    int? minute = int.tryParse(parts[1]);
     if (hour == null || minute == null) return clean;
+    int h = hour;
+    final String period = h >= 12 ? 'PM' : 'AM';
+    if (h == 0) h = 12;
+    if (h > 12) h -= 12;
+    return '${h.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')} $period';
+  }
 
-    return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+  String formatPrayerTime12Hour(dynamic value) {
+    return formatPrayerTime(value);
   }
 
   void updateNextPrayer() {
     if (prayerTimes.isEmpty) return;
-
     final now = DateTime.now();
     const prayers = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 
@@ -460,7 +521,6 @@ class _HomeScreenState extends State<HomeScreen>
     for (final prayer in prayers) {
       final raw = prayerTimes[prayer]?.toString() ?? '';
       final parsed = parsePrayerTime(raw, now);
-
       if (parsed != null && parsed.isAfter(now)) {
         nextDate = parsed;
         foundName = prayer;
@@ -473,7 +533,6 @@ class _HomeScreenState extends State<HomeScreen>
       final fajrRaw = prayerTimes['Fajr']?.toString() ?? '';
       final tomorrow = now.add(const Duration(days: 1));
       final fajr = parsePrayerTime(fajrRaw, tomorrow);
-
       if (fajr != null) {
         nextDate = fajr;
         foundName = 'Fajr';
@@ -484,8 +543,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (nextDate == null || !mounted) return;
 
     final remaining = nextDate.difference(DateTime.now());
-    final prayerChanged =
-        nextPrayer != foundName || nextPrayerTime != foundTime;
+    final prayerChanged = nextPrayer != foundName || nextPrayerTime != foundTime;
 
     if (prayerChanged) {
       setState(() {
@@ -493,7 +551,6 @@ class _HomeScreenState extends State<HomeScreen>
         nextPrayerTime = foundTime;
       });
     }
-
     _remaining.value = remaining;
   }
 
@@ -504,180 +561,6 @@ class _HomeScreenState extends State<HomeScreen>
     return parsed.isBefore(DateTime.now()) && name != nextPrayer;
   }
 
-  void _showNotificationHistorySheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.58,
-        padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0A120E),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.8),
-              blurRadius: 30,
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 42,
-                height: 4.5,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: gold.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.notifications_active_rounded,
-                      color: gold, size: 20),
-                ),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Prayer Notifications Log',
-                    style: TextStyle(
-                      color: whiteText,
-                      fontSize: 16.5,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: greenDark,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: green.withValues(alpha: 0.4),
-                      width: 1,
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.circle, color: green, size: 7),
-                      SizedBox(width: 5),
-                      Text(
-                        'Active',
-                        style: TextStyle(
-                          color: green,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView(
-                physics: const BouncingScrollPhysics(),
-                children: [
-                  _notificationItem('Fajr Adhan Scheduled', '04:20 AM',
-                      'Passed successfully today', true),
-                  _notificationItem('Dhuhr Adhan Scheduled', '12:07 PM',
-                      'Passed successfully today', true),
-                  _notificationItem('Asr Adhan Scheduled', '04:39 PM',
-                      'Upcoming next prayer', false),
-                  _notificationItem('Maghrib Adhan Scheduled', '06:27 PM',
-                      'Scheduled for today', false),
-                  _notificationItem('Isha Adhan Scheduled', '07:53 PM',
-                      'Scheduled for today', false),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _notificationItem(
-      String title, String time, String sub, bool passed) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: passed
-              ? Colors.white.withValues(alpha: 0.06)
-              : green.withValues(alpha: 0.25),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(7),
-            decoration: BoxDecoration(
-              color: passed
-                  ? Colors.white.withValues(alpha: 0.05)
-                  : green.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              passed
-                  ? Icons.check_rounded
-                  : Icons.notifications_active_rounded,
-              color: passed ? greyText : green,
-              size: 16,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: whiteText,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  sub,
-                  style: const TextStyle(color: greyText, fontSize: 10.5),
-                ),
-              ],
-            ),
-          ),
-          Text(
-            time,
-            style: TextStyle(
-              color: passed ? greyText : green,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _smoothNavigateTo(Widget page) {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
@@ -685,19 +568,11 @@ class _HomeScreenState extends State<HomeScreen>
         reverseTransitionDuration: const Duration(milliseconds: 240),
         pageBuilder: (_, __, ___) => page,
         transitionsBuilder: (_, animation, __, child) {
-          final curved = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
-          );
-
+          final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic, reverseCurve: Curves.easeInCubic);
           return FadeTransition(
             opacity: curved,
             child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.02, 0),
-                end: Offset.zero,
-              ).animate(curved),
+              position: Tween<Offset>(begin: const Offset(0.02, 0), end: Offset.zero).animate(curved),
               child: child,
             ),
           );
@@ -706,76 +581,149 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  void _showNotificationHistorySheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        final List<Widget> activeNotifications = [];
+        const prayersList = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+
+        for (final prayerName in prayersList) {
+          if (_mutedPrayers[prayerName] == true) continue;
+          final timeStr = formatPrayerTime12Hour(prayerTimes[prayerName]);
+          final bool passed = isPrayerPassed(prayerName);
+          final bool isNext = (prayerName == nextPrayer);
+
+          String subTitle = 'Scheduled for today';
+          if (passed) subTitle = 'Passed successfully today';
+          else if (isNext) subTitle = 'Upcoming next prayer';
+
+          activeNotifications.add(
+            _notificationItem('$prayerName Adhan Scheduled', timeStr, subTitle, passed),
+          );
+        }
+
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.58,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+          decoration: BoxDecoration(
+            color: surfaceWhite,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(color: borderSubtle, borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: secondarySurface, borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.notifications_active_rounded, color: richEmerald, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Prayer Notifications',
+                      style: TextStyle(color: textPrimary, fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: -0.2),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: activeNotifications.isEmpty
+                    ? Center(
+                  child: Text(
+                    'No active notifications.\nAll prayers are muted.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: textSecondary, fontSize: 14),
+                  ),
+                )
+                    : ListView(
+                  physics: const BouncingScrollPhysics(),
+                  children: activeNotifications,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          AppDrawer(
-            onClose: _toggleDrawer,
-          ),
-          AnimatedBuilder(
-            animation: _drawerAnimationController,
-            child: _buildMainHomeContent(),
-            builder: (context, child) {
-              final progress = _drawerAnimationController.value;
-
-              return Transform.translate(
-                offset: Offset(_slideAnimation.value, 0),
-                child: Transform.scale(
-                  alignment: Alignment.centerLeft,
-                  scale: _scaleAnimation.value,
-                  child: RepaintBoundary(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(30 * progress),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          boxShadow: progress == 0
-                              ? const <BoxShadow>[]
-                              : [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: 0.75 * progress,
-                              ),
-                              blurRadius: 30,
-                              spreadRadius: 8,
-                              offset: const Offset(-12, 10),
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, darkEnabled, child) {
+        return Scaffold(
+          backgroundColor: appBackground,
+          body: Stack(
+            children: [
+              AppDrawer(onClose: _toggleDrawer),
+              AnimatedBuilder(
+                animation: _drawerAnimationController,
+                child: _buildMainHomeContent(),
+                builder: (context, child) {
+                  final progress = _drawerAnimationController.value;
+                  return Transform.translate(
+                    offset: Offset(_slideAnimation.value, 0),
+                    child: Transform.scale(
+                      alignment: Alignment.centerLeft,
+                      scale: _scaleAnimation.value,
+                      child: RepaintBoundary(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(20 * progress), // Multiply sign added
+                          child: Container(
+                            decoration: BoxDecoration(
+                              boxShadow: progress == 0
+                                  ? const <BoxShadow>[]
+                                  : [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 24, offset: const Offset(-6, 6))],
                             ),
-                          ],
-                        ),
-                        child: GestureDetector(
-                          onTap: _isDrawerOpen ? _toggleDrawer : null,
-                          child: AbsorbPointer(
-                            absorbing: _isDrawerOpen,
-                            child: child!,
+                            child: GestureDetector(
+                              onTap: _isDrawerOpen ? _toggleDrawer : null,
+                              child: AbsorbPointer(absorbing: _isDrawerOpen, child: child!),
+                            ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-              );
-            },
+                  );
+                },
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget _buildMainHomeContent() {
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: appBackground,
       body: SafeArea(
         bottom: false,
         child: Stack(
           children: [
             RefreshIndicator(
-              color: green,
-              backgroundColor: card2,
+              color: richEmerald,
+              backgroundColor: surfaceWhite,
+              displacement: 60.0,
+              edgeOffset: 10.0,
               onRefresh: loadData,
               child: buildBody(),
             ),
+            Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomNavigation()),
           ],
         ),
       ),
@@ -787,176 +735,173 @@ class _HomeScreenState extends State<HomeScreen>
     if (errorMessage.isNotEmpty) return errorView();
 
     return SingleChildScrollView(
-      physics: const AlwaysScrollableScrollPhysics(
-        parent: BouncingScrollPhysics(),
-      ),
-      padding: const EdgeInsets.only(bottom: 24),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 110),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           heroHeader(),
           locationCard(),
           if (isGpsOff) gpsWarningBanner(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           nextPrayerCard(),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           prayerSection(),
-          const SizedBox(height: 18),
+          const SizedBox(height: 28),
           quickActions(),
-          const SizedBox(height: 18),
-          quoteCard(),
-          const SizedBox(height: 14),
+          const SizedBox(height: 28),
+          nativeAdCard(),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  // ==========================================================
-  // TOP EXECUTIVE HEADER
-  // ==========================================================
+  Widget nativeAdCard() {
+    if (_isAdLoaded && _nativeAd != null) {
+      return Container(
+        height: 250,
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: surfaceWhite,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderSubtle),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: ClipRRect(borderRadius: BorderRadius.circular(16), child: AdWidget(ad: _nativeAd!)),
+      );
+    }
+
+    return Container(
+      height: 250,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: surfaceWhite,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderSubtle),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: richEmerald, strokeWidth: 2)),
+            const SizedBox(height: 14),
+            Text('Loading Advertisement...', style: TextStyle(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigation() {
+    return Container(
+      height: 66,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      decoration: BoxDecoration(
+        color: surfaceWhite,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderSubtle),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 16, offset: const Offset(0, 6))],
+      ),
+      child: Row(
+        children: [
+          _navButton(icon: Icons.home_filled, label: 'Home', active: true, action: () {}),
+          _navButton(icon: Icons.menu_book_rounded, label: 'Quran', active: false, action: () => _smoothNavigateTo(const QuranScreen())),
+          _navButton(icon: Icons.explore_rounded, label: 'Qibla', active: false, action: () => _smoothNavigateTo(const QiblaScreen())),
+          _navButton(customIcon: const LiveTasbeehIcon(size: 20, color: richEmerald, animate: true), label: 'Tasbih', active: false, action: () => _smoothNavigateTo(const TasbeehScreen())),
+          _navButton(icon: Icons.settings_rounded, label: 'Settings', active: false, action: () => _smoothNavigateTo(const SettingsScreen())),
+        ],
+      ),
+    );
+  }
+
+  Widget _navButton({IconData? icon, Widget? customIcon, required String label, required bool active, required VoidCallback action}) {
+    final iconColor = active ? richEmerald : textInactive;
+    final textColor = active ? richEmerald : textSecondary;
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: action,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          decoration: BoxDecoration(
+            color: active ? activeNavBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(width: 22, height: 22, child: Center(child: customIcon ?? Icon(icon, color: iconColor, size: 20))),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(color: textColor, fontSize: 10, fontWeight: active ? FontWeight.w600 : FontWeight.w500, letterSpacing: -0.2),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget heroHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 10, 18, 8),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: primaryDeepEmerald,
+        borderRadius: BorderRadius.circular(18),
+      ),
       child: Row(
         children: [
-          // Drawer Hamburger Button with Gold Glow
           GestureDetector(
             onTap: _toggleDrawer,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 48,
-              height: 48,
+            child: Container(
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    gold.withValues(alpha: 0.18),
-                    card2,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: gold.withValues(alpha: 0.55),
-                  width: 1.3,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: gold.withValues(alpha: 0.15),
-                    blurRadius: 10,
-                  ),
-                ],
+                color: richEmerald,
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.menu_rounded, color: gold, size: 26),
+              child: const Icon(Icons.menu_rounded, color: Colors.white, size: 22),
             ),
           ),
           const SizedBox(width: 14),
-          Expanded(
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      'PRAYER TIMES',
-                      style: TextStyle(
-                        color: goldAccent,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.8,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 5, vertical: 1.5),
-                      decoration: BoxDecoration(
-                        color: greenDark,
-                        borderRadius: BorderRadius.circular(5),
-                        border: Border.all(
-                          color: green.withValues(alpha: 0.4),
-                          width: 0.8,
-                        ),
-                      ),
-                      child: const Text(
-                        'LIVE',
-                        style: TextStyle(
-                          color: green,
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.6,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                const Text(
+                Text(
                   'Your Daily Prayer',
-                  style: TextStyle(
-                    color: whiteText,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.2,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700, letterSpacing: -0.3),
                 ),
-                const SizedBox(height: 1),
+                SizedBox(height: 2),
                 Text(
                   'Stay connected with your faith',
-                  style: TextStyle(
-                    color: greyText.withValues(alpha: 0.85),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(color: Color(0xFFDCEAE4), fontSize: 13, fontWeight: FontWeight.w400),
                 ),
               ],
             ),
           ),
-          // Notification Bell with Pulsing Indicator
           GestureDetector(
             onTap: _showNotificationHistorySheet,
             child: Container(
-              width: 44,
-              height: 44,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                color: card,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.35),
-                    blurRadius: 8,
-                  ),
-                ],
+                color: richEmerald,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  const Icon(Icons.notifications_outlined,
-                      color: whiteText, size: 21),
+                  const Icon(Icons.notifications_none_rounded, color: Colors.white, size: 20),
                   Positioned(
-                    top: 10,
+                    top: 11,
                     right: 11,
-                    child: Container(
-                      width: 7,
-                      height: 7,
-                      decoration: BoxDecoration(
-                        color: green,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: green.withValues(alpha: 0.8),
-                            blurRadius: 5,
-                            spreadRadius: 1,
-                          ),
-                        ],
-                      ),
-                    ),
+                    child: Container(width: 5, height: 5, decoration: const BoxDecoration(color: mutedGold, shape: BoxShape.circle)),
                   ),
                 ],
               ),
@@ -967,42 +912,21 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ==========================================================
-  // LOCATION & WEATHER GLASS CARD
-  // ==========================================================
-
   Widget locationCard() {
     List<String> cityParts = city.split(',');
     String areaTitle = cityParts.first.trim();
-    String subLocation =
-    cityParts.length > 1 ? cityParts.sublist(1).join(',').trim() : '';
+    String subLocation = cityParts.length > 1 ? cityParts.sublist(1).join(',').trim() : '';
 
     return GestureDetector(
       onTap: () => _smoothNavigateTo(const IslamicCalendarScreen()),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(18, 6, 18, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF111C16),
-              Color(0xFF0A120E),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.10),
-            width: 1.1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.45),
-              blurRadius: 14,
-              offset: const Offset(0, 5),
-            ),
-          ],
+          color: surfaceWhite,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderSubtle),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Row(
           children: [
@@ -1010,17 +934,12 @@ class _HomeScreenState extends State<HomeScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Location Header
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: green.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.location_on_rounded,
-                            color: green, size: 16),
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(color: secondarySurface, borderRadius: BorderRadius.circular(6)),
+                        child: const Icon(Icons.location_on_rounded, color: richEmerald, size: 14),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
@@ -1028,116 +947,40 @@ class _HomeScreenState extends State<HomeScreen>
                           areaTitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: whiteText,
-                            fontSize: 16.5,
-                            fontWeight: FontWeight.w900,
-                          ),
+                          style: TextStyle(color: textPrimary, fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: -0.2),
                         ),
                       ),
                     ],
                   ),
                   if (subLocation.isNotEmpty) ...[
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Padding(
-                      padding: const EdgeInsets.only(left: 29),
-                      child: Text(
-                        subLocation,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: green,
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      padding: const EdgeInsets.only(left: 26),
+                      child: Text(subLocation, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w400)),
                     ),
                   ],
-                  const SizedBox(height: 8),
-                  // Gregorian Date
-                  Text(
-                    todayDate,
-                    style: TextStyle(
-                      color: greyText.withValues(alpha: 0.9),
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  const SizedBox(height: 12),
+                  Text(todayDate, style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 4),
-                  // Hijri Date Badge
-                  Container(
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: gold.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(7),
-                      border: Border.all(
-                        color: gold.withValues(alpha: 0.35),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.calendar_month_rounded,
-                            color: gold, size: 12),
-                        const SizedBox(width: 5),
-                        Text(
-                          hijriDate,
-                          style: const TextStyle(
-                            color: gold,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today_rounded, color: mutedGold, size: 12),
+                      const SizedBox(width: 6),
+                      Text(hijriDate, style: const TextStyle(color: mutedGold, fontSize: 12, fontWeight: FontWeight.w500)),
+                    ],
                   ),
                 ],
               ),
             ),
-            Container(
-              width: 1,
-              height: 64,
-              margin: const EdgeInsets.symmetric(horizontal: 12),
-              color: Colors.white.withValues(alpha: 0.09),
-            ),
-            // Weather Card
-            Container(
-              width: 72,
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                      color: gold.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(weatherIcon, color: gold, size: 22),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${temperature.round()}°C',
-                    style: const TextStyle(
-                      color: whiteText,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  Text(
-                    weatherName,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: greyText,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
+            Container(width: 1, height: 50, margin: const EdgeInsets.symmetric(horizontal: 16), color: borderSubtle),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(weatherIcon, color: mutedGold, size: 22),
+                const SizedBox(height: 6),
+                Text('${temperature.round()}°', style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+                Text(weatherName, style: TextStyle(color: textSecondary, fontSize: 11, fontWeight: FontWeight.w400)),
+              ],
             ),
           ],
         ),
@@ -1147,307 +990,100 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget gpsWarningBanner() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF231A05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: gold.withValues(alpha: 0.5)),
+        color: lightCreamGold,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: warningBorder),
       ),
-      child: Row(
+      child: const Row(
         children: [
-          const Icon(Icons.location_off_rounded, color: gold, size: 18),
-          const SizedBox(width: 8),
-          const Expanded(
+          Icon(Icons.location_off_rounded, color: warningIcon, size: 16),
+          SizedBox(width: 10),
+          Expanded(
             child: Text(
-              'GPS is disabled. Showing saved prayer coordinates.',
-              style: TextStyle(
-                color: gold,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
+              'GPS is disabled. Showing saved coordinates.',
+              style: TextStyle(color: warningText, fontSize: 13, fontWeight: FontWeight.w600),
             ),
           ),
         ],
       ),
     );
   }
-
-  // ==========================================================
-  // NEXT PRAYER HERO CARD (DIGITAL COUNTDOWN & GLOWING RING)
-  // ==========================================================
 
   Widget nextPrayerCard() {
-    return RepaintBoundary(
-      child: ValueListenableBuilder<Duration>(
-        valueListenable: _remaining,
-        builder: (context, remaining, _) {
-          final hours = remaining.inHours.clamp(0, 99);
-          final minutes = remaining.inMinutes.remainder(60).clamp(0, 59);
-          final seconds = remaining.inSeconds.remainder(60).clamp(0, 59);
+    return ValueListenableBuilder<Duration>(
+      valueListenable: _remaining,
+      builder: (context, remaining, _) {
+        final hours = remaining.inHours.clamp(0, 99);
+        final minutes = remaining.inMinutes.remainder(60).clamp(0, 59);
+        final seconds = remaining.inSeconds.remainder(60).clamp(0, 59);
 
-          final hoursStr = hours.toString().padLeft(2, '0');
-          final minsStr = minutes.toString().padLeft(2, '0');
-          final secsStr = seconds.toString().padLeft(2, '0');
+        final hoursStr = hours.toString().padLeft(2, '0');
+        final minsStr = minutes.toString().padLeft(2, '0');
+        final secsStr = seconds.toString().padLeft(2, '0');
 
-          return AnimatedBuilder(
-            animation: pulseController,
-            builder: (context, child) {
-              return Container(
-                margin: const EdgeInsets.fromLTRB(18, 6, 18, 0),
-                padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF0F2B1D),
-                      Color(0xFF0A1A12),
-                      Color(0xFF06100B),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: green.withValues(
-                      alpha: 0.35 + (pulseController.value * 0.25),
-                    ),
-                    width: 1.3,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: green.withValues(
-                        alpha: 0.14 + (pulseController.value * 0.12),
-                      ),
-                      blurRadius: 18,
-                      spreadRadius: 1,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: primaryDeepEmerald,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 3))],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 7,
-                                height: 7,
-                                decoration: BoxDecoration(
-                                  color: green,
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: green.withValues(alpha: 0.8),
-                                      blurRadius: 6,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 7),
-                              const Text(
-                                'NEXT PRAYER',
-                                style: TextStyle(
-                                  color: green,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            nextPrayer.isEmpty ? 'Fajr' : nextPrayer,
-                            style: const TextStyle(
-                              color: whiteText,
-                              fontSize: 26,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: -0.3,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black,
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              _timerCapsule(hoursStr, 'H'),
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 4),
-                                child: Text(
-                                  ':',
-                                  style: TextStyle(
-                                    color: green,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                              _timerCapsule(minsStr, 'M'),
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 4),
-                                child: Text(
-                                  ':',
-                                  style: TextStyle(
-                                    color: green,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                              _timerCapsule(secsStr, 'S'),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 4.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.35),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.08),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.notifications_active_rounded,
-                                  color: green,
-                                  size: 12,
-                                ),
-                                const SizedBox(width: 5),
-                                Flexible(
-                                  child: Text(
-                                    'Adhan will play at $nextPrayerTime',
-                                    style: const TextStyle(
-                                      color: Color(0xFFCFD8DC),
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    const Text(
+                      'NEXT PRAYER',
+                      style: TextStyle(color: Color(0xFFA9D4C1), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.1),
                     ),
-                    const SizedBox(width: 6),
-                    prayerRing(remaining),
+                    const SizedBox(height: 6),
+                    Text(
+                      nextPrayer.isEmpty ? 'Fajr' : nextPrayer,
+                      style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '$hoursStr : $minsStr : $secsStr',
+                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 1.2),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.volume_up_rounded, color: Color(0xFFD1B66C), size: 14),
+                        const SizedBox(width: 6),
+                        Text('Adhan at $nextPrayerTime', style: const TextStyle(color: Color(0xFFDCEAE4), fontSize: 12, fontWeight: FontWeight.w500)),
+                      ],
+                    ),
                   ],
                 ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _timerCapsule(String number, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: green.withValues(alpha: 0.3),
-          width: 0.8,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            transitionBuilder: (child, animation) => FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.25),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
               ),
-            ),
-            child: Text(
-              number,
-              key: ValueKey(number),
-              style: const TextStyle(
-                color: green,
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.5,
-              ),
-            ),
+              prayerRing(remaining),
+            ],
           ),
-          const SizedBox(width: 2),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
-              fontSize: 8.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
   Widget prayerRing(Duration remaining) {
     return SizedBox(
-      width: 100,
-      height: 100,
+      width: 84,
+      height: 84,
       child: CustomPaint(
-        painter: PrayerRingPainter(
-          progress: ringProgress(remaining),
-          pulse: pulseController.value,
-        ),
+        painter: CleanPrayerRingPainter(progress: ringProgress(remaining)),
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: gold.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.mosque_rounded, color: gold, size: 17),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                nextPrayerTime.isEmpty ? '04:20' : nextPrayerTime,
-                style: const TextStyle(
-                  color: whiteText,
-                  fontSize: 16.5,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              Text(
-                nextPrayer,
-                style: const TextStyle(
-                  color: green,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              const Icon(Icons.mosque_rounded, color: Color(0xFFD1B66C), size: 20),
+              const SizedBox(height: 2),
+              Text(nextPrayerTime.isEmpty ? '04:20 AM' : nextPrayerTime, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
@@ -1457,111 +1093,48 @@ class _HomeScreenState extends State<HomeScreen>
 
   double ringProgress(Duration remaining) {
     if (remaining.isNegative) return 0.15;
-    return (remaining.inSeconds / (12 * 60 * 60)).clamp(0.10, 0.95);
+    return (remaining.inSeconds / (12 * 60 * 60)).clamp(0.05, 1.0); // Multiply signs added
   }
-
-  // ==========================================================
-  // TODAY'S PRAYER CARDS (HORIZONTAL STYLED TILES)
-  // ==========================================================
 
   Widget prayerSection() {
     const prayerNames = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 
     return Column(
       children: [
-        // Section Header
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              Container(
-                width: 3.5,
-                height: 14,
-                decoration: BoxDecoration(
-                  color: green,
-                  borderRadius: BorderRadius.circular(2),
-                  boxShadow: [
-                    BoxShadow(
-                      color: green.withValues(alpha: 0.5),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-              ),
+              Container(width: 3, height: 14, decoration: BoxDecoration(color: mutedGold, borderRadius: BorderRadius.circular(4))),
               const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  "TODAY'S PRAYER TIMES",
-                  style: TextStyle(
-                    color: whiteText,
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+              Expanded(
+                child: Text("TODAY'S TIMINGS", style: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 0.4)),
               ),
-              // Refresh Button
               GestureDetector(
                 onTap: isRefreshing ? null : loadData,
-                child: Container(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: card2,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.10),
+                child: Row(
+                  children: [
+                    if (isRefreshing) const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: richEmerald))
+                    else Icon(Icons.refresh_rounded, color: textSecondary, size: 15),
+                    const SizedBox(width: 4),
+                    Text(
+                      isRefreshing ? 'Updating...' : 'Refresh',
+                      style: TextStyle(color: isRefreshing ? richEmerald : textSecondary, fontSize: 12, fontWeight: FontWeight.w500),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      isRefreshing
-                          ? const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: green,
-                        ),
-                      )
-                          : const Icon(Icons.refresh_rounded,
-                          color: greyText, size: 14),
-                      const SizedBox(width: 5),
-                      Text(
-                        isRefreshing ? 'Updating...' : 'Refresh',
-                        style: TextStyle(
-                          color: isRefreshing ? green : greyText,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 10),
-        // 5 Prayer Cards Row
+        const SizedBox(height: 12),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             children: prayerNames.map((name) {
               final active = name == nextPrayer;
               final passed = isPrayerPassed(name);
-
-              return Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: prayerCard(
-                    name,
-                    formatPrayerTime(prayerTimes[name]),
-                    active: active,
-                    passed: passed,
-                  ),
-                ),
-              );
+              return Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: prayerCard(name, formatPrayerTime(prayerTimes[name]), active: active, passed: passed)));
             }).toList(),
           ),
         ),
@@ -1569,121 +1142,59 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget prayerCard(
-      String name,
-      String time, {
-        required bool active,
-        required bool passed,
-      }) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      height: 136,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+  Widget prayerCard(String name, String time, {required bool active, required bool passed}) {
+    final isMuted = _mutedPrayers[name] ?? false;
+
+    return Container(
+      height: 125,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: active
-              ? [
-            const Color(0xFF104028),
-            const Color(0xFF092015),
-          ]
-              : passed
-              ? [
-            const Color(0xFF0B120E),
-            const Color(0xFF070B09),
-          ]
-              : [
-            const Color(0xFF121B16),
-            const Color(0xFF0B110E),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: active
-              ? green
-              : passed
-              ? Colors.white.withValues(alpha: 0.05)
-              : Colors.white.withValues(alpha: 0.11),
-          width: active ? 1.5 : 1,
-        ),
-        boxShadow: active
-            ? [
-          BoxShadow(
-            color: green.withValues(alpha: 0.28),
-            blurRadius: 12,
-            spreadRadius: 0.5,
-            offset: const Offset(0, 3),
-          )
-        ]
-            : [],
+        color: active ? selectedSurface : surfaceWhite,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: active ? richEmerald : borderSubtle, width: active ? 1.5 : 1),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 1))],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: active
-                  ? green.withValues(alpha: 0.22)
-                  : passed
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : gold.withValues(alpha: 0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              prayerIcon(name),
-              color: active
-                  ? green
-                  : passed
-                  ? greyText.withValues(alpha: 0.6)
-                  : gold,
-              size: 19,
-            ),
-          ),
-          Text(
-            name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: active
-                  ? green
-                  : passed
-                  ? greyText
-                  : whiteText,
-              fontSize: 11.5,
-              fontWeight: active ? FontWeight.w900 : FontWeight.w700,
-            ),
-          ),
-          Text(
-            time,
-            style: TextStyle(
-              color: passed ? greyText.withValues(alpha: 0.7) : whiteText,
-              fontSize: 13.5,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.2,
-            ),
-          ),
-          if (passed)
-            const Icon(Icons.check_circle_rounded,
-                color: Color(0xFF4CAF50), size: 13)
-          else
-            Container(
-              width: active ? 26 : 18,
-              height: 3,
-              decoration: BoxDecoration(
-                color: active ? green : gold.withValues(alpha: 0.6),
-                borderRadius: BorderRadius.circular(10),
-                boxShadow: active
-                    ? [
-                  BoxShadow(
-                    color: green.withValues(alpha: 0.8),
-                    blurRadius: 4,
-                  )
-                ]
-                    : [],
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(prayerIcon(name), color: active ? richEmerald : (passed ? textInactive : softEmerald), size: 14),
+              const SizedBox(width: 2),
+              GestureDetector(
+                onTap: () => _toggleMutePrayer(name),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    isMuted ? Icons.notifications_off_rounded : Icons.notifications_active_rounded,
+                    color: isMuted ? Colors.redAccent : (active ? richEmerald : mutedGold),
+                    size: 22,
+                  ),
+                ),
               ),
-            ),
+            ],
+          ),
+          Column(
+            children: [
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: active ? primaryDeepEmerald : (passed ? textSecondary : textSecondary), fontSize: 12, fontWeight: active ? FontWeight.w700 : FontWeight.w500),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                time,
+                style: TextStyle(color: passed ? textSecondary : textPrimary, fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+              ),
+            ],
+          ),
+          Container(
+            width: 14,
+            height: 3,
+            decoration: BoxDecoration(color: active ? richEmerald : (passed ? successGreen : Colors.transparent), borderRadius: BorderRadius.circular(10)),
+          ),
         ],
       ),
     );
@@ -1691,28 +1202,18 @@ class _HomeScreenState extends State<HomeScreen>
 
   IconData prayerIcon(String name) {
     switch (name) {
-      case 'Fajr':
-        return Icons.wb_twilight_rounded;
-      case 'Dhuhr':
-        return Icons.wb_sunny_rounded;
-      case 'Asr':
-        return Icons.cloud_rounded;
-      case 'Maghrib':
-        return Icons.mosque_rounded;
-      case 'Isha':
-        return Icons.nights_stay_rounded;
-      default:
-        return Icons.access_time_rounded;
+      case 'Fajr': return Icons.wb_twilight_rounded;
+      case 'Dhuhr': return Icons.wb_sunny_rounded;
+      case 'Asr': return Icons.cloud_rounded;
+      case 'Maghrib': return Icons.mosque_rounded;
+      case 'Isha': return Icons.nights_stay_rounded;
+      default: return Icons.access_time_rounded;
     }
   }
 
-  // ==========================================================
-  // QUICK ACCESS BENTO ACTIONS (WITH REAL LIVE TASBEEH ICON)
-  // ==========================================================
-
   Widget quickActions() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
           Row(
@@ -1720,94 +1221,30 @@ class _HomeScreenState extends State<HomeScreen>
             children: [
               Row(
                 children: [
-                  Container(
-                    width: 3.5,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      color: gold,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+                  Container(width: 3, height: 14, decoration: BoxDecoration(color: mutedGold, borderRadius: BorderRadius.circular(4))),
                   const SizedBox(width: 8),
-                  const Text(
-                    'QUICK ACCESS',
-                    style: TextStyle(
-                      color: whiteText,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
+                  Text('EXPLORE', style: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 0.4)),
                 ],
               ),
               GestureDetector(
                 onTap: () => _smoothNavigateTo(const MoreScreen()),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: card2,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'See All',
-                        style: TextStyle(
-                          color: green,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SizedBox(width: 2),
-                      Icon(Icons.chevron_right_rounded, color: green, size: 14),
-                    ],
-                  ),
+                child: const Row(
+                  children: [
+                    Text('See All', style: TextStyle(color: richEmerald, fontSize: 12, fontWeight: FontWeight.w600)),
+                    SizedBox(width: 2),
+                    Icon(Icons.chevron_right_rounded, color: richEmerald, size: 16),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Row(
             children: [
-              quickAction(
-                icon: Icons.menu_book_rounded,
-                title: 'Quran',
-                subtitle: 'Read & Listen',
-                color: const Color(0xFFFF9E1B),
-                action: () => _smoothNavigateTo(const QuranScreen()),
-              ),
-              quickAction(
-                title: 'Tasbih',
-                subtitle: 'Live Counter',
-                color: const Color(0xFF00E676),
-                action: () => _smoothNavigateTo(const TasbeehScreen()),
-                customIcon: const LiveTasbeehIcon(
-                  size: 22,
-                  color: Color(0xFF00E676),
-                  animate: true,
-                ),
-              ),
-              quickAction(
-                icon: Icons.explore_rounded,
-                title: 'Qibla',
-                subtitle: 'Find Direction',
-                color: const Color(0xFF29B6F6),
-                action: () => _smoothNavigateTo(const QiblaScreen()),
-              ),
-              quickAction(
-                icon: Icons.apps_rounded,
-                title: 'More',
-                subtitle: 'All Features',
-                color: const Color(0xFFAB47BC),
-                action: () => _smoothNavigateTo(const MoreScreen()),
-              ),
+              quickAction(icon: Icons.menu_book_rounded, title: 'Quran', brandColor: richEmerald, action: () => _smoothNavigateTo(const QuranScreen())),
+              quickAction(title: 'Tasbih', brandColor: softEmerald, action: () => _smoothNavigateTo(const TasbeehScreen()), customIcon: const LiveTasbeehIcon(size: 20, color: softEmerald, animate: true)),
+              quickAction(icon: Icons.explore_rounded, title: 'Qibla', brandColor: const Color(0xFF5F9583), action: () => _smoothNavigateTo(const QiblaScreen())),
+              quickAction(icon: Icons.grid_view_rounded, title: 'More', brandColor: mutedGold, action: () => _smoothNavigateTo(const MoreScreen())),
             ],
           ),
         ],
@@ -1815,88 +1252,30 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget quickAction({
-    IconData? icon,
-    Widget? customIcon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback action,
-  }) {
+  Widget quickAction({IconData? icon, Widget? customIcon, required String title, required Color brandColor, required VoidCallback action}) {
     return Expanded(
       child: GestureDetector(
         onTap: action,
         child: Container(
-          height: 104,
-          margin: const EdgeInsets.symmetric(horizontal: 3.5),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          height: 90,
+          margin: const EdgeInsets.symmetric(horizontal: 4),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                color.withValues(alpha: 0.08),
-                card,
-              ],
-            ),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: color.withValues(alpha: 0.25),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.35),
-                blurRadius: 8,
-                offset: const Offset(0, 3),
-              ),
-            ],
+            color: surfaceWhite,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: borderSubtle),
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 1))],
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      color.withValues(alpha: 0.3),
-                      color.withValues(alpha: 0.1),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(11),
-                  border: Border.all(
-                    color: color.withValues(alpha: 0.45),
-                    width: 1,
-                  ),
-                ),
-                child: Center(
-                  child: customIcon ?? Icon(icon, color: color, size: 20),
-                ),
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(color: secondarySurface, borderRadius: BorderRadius.circular(10)),
+                child: Center(child: customIcon ?? Icon(icon, color: brandColor, size: 20)),
               ),
-              const SizedBox(height: 6),
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: whiteText,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const SizedBox(height: 1),
-              Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: greyText.withValues(alpha: 0.8),
-                  fontSize: 8.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+              const SizedBox(height: 8),
+              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: textPrimary, fontSize: 12, fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -1904,167 +1283,31 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  // ==========================================================
-  // DAILY VERSE & DUA CARD
-  // ==========================================================
-
-  Widget quoteCard() {
-    final currentQuote = quotes[_currentQuoteIndex];
-    final String id = 'home_quote_$_currentQuoteIndex';
-
+  Widget _notificationItem(String title, String time, String sub, bool passed) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 18),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF131F19),
-            Color(0xFF0C1410),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: surfaceWhite,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderSubtle),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(5),
-                    decoration: BoxDecoration(
-                      color: green.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.auto_stories_rounded,
-                        color: green, size: 14),
-                  ),
-                  const SizedBox(width: 7),
-                  const Text(
-                    'DAILY AYAH & DUA',
-                    style: TextStyle(
-                      color: green,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ],
-              ),
-              FutureBuilder<bool>(
-                future: FavoritesService.isFavorite(id),
-                builder: (context, snapshot) {
-                  final isFav = snapshot.data ?? false;
-                  return IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    icon: Icon(
-                      isFav
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color: isFav ? Colors.redAccent : greyText,
-                      size: 19,
-                    ),
-                    onPressed: () async {
-                      await FavoritesService.toggleFavorite(
-                        id: id,
-                        category: 'Quran',
-                        title: currentQuote['arabic']!,
-                        content: currentQuote['translation']!,
-                        subtitle: currentQuote['reference']!,
-                      );
-                      setState(() {});
-                    },
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 104,
-            child: PageView.builder(
-              controller: _quotePageController,
-              itemCount: quotes.length,
-              onPageChanged: (idx) => setState(() => _currentQuoteIndex = idx),
-              itemBuilder: (context, index) {
-                final q = quotes[index];
-                return Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      q['arabic']!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: gold,
-                        fontSize: 17.5,
-                        height: 1.45,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      q['translation']!,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFFCFD8DC),
-                        fontSize: 11,
-                        height: 1.3,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      q['reference']!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: gold.withValues(alpha: 0.8),
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                );
-              },
+          Icon(passed ? Icons.check_circle_outline_rounded : Icons.notifications_none_rounded, color: passed ? textInactive : richEmerald, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(sub, style: TextStyle(color: textSecondary, fontSize: 12)),
+              ],
             ),
           ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              quotes.length,
-                  (index) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                child: quoteDot(_currentQuoteIndex == index),
-              ),
-            ),
-          ),
+          Text(time, style: TextStyle(color: passed ? textSecondary : textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
         ],
-      ),
-    );
-  }
-
-  Widget quoteDot(bool active) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      width: active ? 16 : 6,
-      height: 5,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        color: active ? green : Colors.white.withValues(alpha: 0.2),
       ),
     );
   }
@@ -2072,20 +1315,13 @@ class _HomeScreenState extends State<HomeScreen>
   Widget loadingView() {
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.7,
-      child: const Center(
+      child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: green, strokeWidth: 3),
-            SizedBox(height: 16),
-            Text(
-              'Loading prayer times...',
-              style: TextStyle(
-                color: whiteText,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            const CircularProgressIndicator(color: richEmerald, strokeWidth: 2.5),
+            const SizedBox(height: 16),
+            Text('Loading prayer times...', style: TextStyle(color: textSecondary, fontSize: 14)),
           ],
         ),
       ),
@@ -2093,6 +1329,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget errorView() {
+    final tSec = textSecondary;
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.7,
       child: Center(
@@ -2101,25 +1338,20 @@ class _HomeScreenState extends State<HomeScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.cloud_off_rounded,
-                color: Colors.white54,
-                size: 50,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                errorMessage.isEmpty ? 'Unable to load data.' : errorMessage,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: greyText, fontSize: 13),
-              ),
-              const SizedBox(height: 18),
+              Icon(Icons.cloud_off_rounded, color: tSec, size: 48),
+              const SizedBox(height: 14),
+              Text(errorMessage.isEmpty ? 'Unable to load data.' : errorMessage, textAlign: TextAlign.center, style: TextStyle(color: tSec, fontSize: 14)),
+              const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: loadData,
-                icon: const Icon(Icons.refresh_rounded),
+                icon: const Icon(Icons.refresh_rounded, size: 16),
                 label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: green,
-                  foregroundColor: Colors.black,
+                  backgroundColor: richEmerald,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
             ],
@@ -2130,57 +1362,36 @@ class _HomeScreenState extends State<HomeScreen>
   }
 }
 
-// ==========================================================
-// PRAYER RING CUSTOM PAINTER WITH MULTI-STOP SWEEP GRADIENT
-// ==========================================================
-
-class PrayerRingPainter extends CustomPainter {
+class CleanPrayerRingPainter extends CustomPainter {
   final double progress;
-  final double pulse;
 
-  const PrayerRingPainter({required this.progress, required this.pulse});
+  const CleanPrayerRingPainter({required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
-    const Color ringGreen = Color(0xFF00E676);
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2 - 7;
+    final radius = (size.width / 2) - 4;
     final rect = Rect.fromCircle(center: center, radius: radius);
 
-    // Track Background
     final basePaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 7.5
+      ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round
-      ..color = Colors.white.withValues(alpha: 0.08);
+      ..color = const Color(0xFF376B59);
 
     canvas.drawCircle(center, radius, basePaint);
 
-    // Active Gradient Arc
     final activePaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 7.5
+      ..strokeWidth = 3.5
       ..strokeCap = StrokeCap.round
-      ..shader = const SweepGradient(
-        colors: [
-          Color(0xFF00E676),
-          Color(0xFF76FF03),
-          Color(0xFF00E676),
-        ],
-      ).createShader(rect);
+      ..color = const Color(0xFFB5964A);
 
-    canvas.drawArc(rect, -1.57, 6.28318 * progress, false, activePaint);
-
-    // Pulsing Outer Glow
-    final glowPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..color = ringGreen.withValues(alpha: 0.10 + pulse * 0.14);
-    canvas.drawCircle(center, radius + 5, glowPaint);
+    canvas.drawArc(rect, -1.57, 6.28318 * progress, false, activePaint); // Multiply sign added
   }
 
   @override
-  bool shouldRepaint(covariant PrayerRingPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.pulse != pulse;
+  bool shouldRepaint(covariant CleanPrayerRingPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

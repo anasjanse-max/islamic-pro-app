@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'favorites_service.dart';
 import 'more_screen.dart'; // Navigates smoothly back to More screen
+import 'settings_screen.dart';
 
 class FavoritesScreen extends StatefulWidget {
   final bool fromMore;
@@ -11,12 +12,24 @@ class FavoritesScreen extends StatefulWidget {
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  static const Color background = Color(0xFF000000);
-  static const Color card = Color(0xFF0A0F0C);
-  static const Color green = Color(0xFF26E17A);
-  static const Color gold = Color(0xFFE8B63D);
-  static const Color whiteText = Color(0xFFF4F6F5);
-  static const Color greyText = Color(0xFF98A19D);
+  // ==========================================================
+  // DYNAMIC PALETTE BASED ON DARK MODE STATE
+  // ==========================================================
+  bool get _isDark => ThemeService.isDarkMode.value;
+
+  Color get appBackground => _isDark ? const Color(0xFF0B1511) : const Color(0xFFF7F6F1);
+  Color get surfaceWhite => _isDark ? const Color(0xFF14221C) : const Color(0xFFFFFFFF);
+  Color get secondarySurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
+
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
+
+  Color get textPrimary => _isDark ? const Color(0xFFF4F6F2) : const Color(0xFF1D2924);
+  Color get textSecondary => _isDark ? const Color(0xFFAAB6AF) : const Color(0xFF66736D);
+  Color get textInactive => _isDark ? const Color(0xFF718079) : const Color(0xFF718079);
+  Color get borderSubtle => _isDark ? const Color(0xFF24332B) : const Color(0xFFD5DFDA);
 
   List<Map<String, dynamic>> _favorites = [];
   bool _isLoading = true;
@@ -60,14 +73,18 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   void _handleBack() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 180),
-        pageBuilder: (_, __, ___) => const MoreScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 180),
+          pageBuilder: (_, __, ___) => const MoreScreen(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      );
+    }
   }
 
   IconData _getCategoryIcon(String category) {
@@ -91,195 +108,209 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBack();
-      },
-      child: Scaffold(
-        backgroundColor: background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _headerSection(),
-              _categoryFilterChips(),
-              Expanded(
-                child: _isLoading
-                    ? const Center(
-                    child: CircularProgressIndicator(color: green))
-                    : _filteredFavorites.isEmpty
-                    ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.bookmark_border_rounded,
-                          color: gold.withValues(alpha: 0.5), size: 60),
-                      const SizedBox(height: 14),
-                      const Text(
-                        'No Saved Items Yet',
-                        style: TextStyle(
-                          color: whiteText,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Tap the heart icon on any item to save it here.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: greyText, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                )
-                    : ListView.builder(
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
-                  ),
-                  cacheExtent: 2000,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _filteredFavorites.length,
-                  itemBuilder: (context, index) {
-                    final item = _filteredFavorites[index];
-                    final String cat = item['category'] ?? 'Saved';
-
-                    return RepaintBoundary(
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: card,
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.08),
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, darkEnabled, child) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _handleBack();
+          },
+          child: Scaffold(
+            backgroundColor: appBackground,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _headerSection(),
+                  _categoryFilterChips(),
+                  Expanded(
+                    child: _isLoading
+                        ? const Center(
+                        child: CircularProgressIndicator(color: richEmerald))
+                        : _filteredFavorites.isEmpty
+                        ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.bookmark_border_rounded,
+                              color: richEmerald.withValues(alpha: 0.4), size: 54),
+                          const SizedBox(height: 14),
+                          Text(
+                            'No Saved Items Yet',
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: gold.withValues(alpha: 0.12),
-                                    borderRadius:
-                                    BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        _getCategoryIcon(cat),
-                                        color: gold,
-                                        size: 14,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        cat,
-                                        style: const TextStyle(
-                                          color: gold,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Spacer(),
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.favorite_rounded,
-                                    color: Colors.redAccent,
-                                    size: 22,
-                                  ),
-                                  onPressed: () =>
-                                      _removeItem(item['id']),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Tap the heart icon on any item to save it here.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: textSecondary, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    )
+                        : ListView.builder(
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                      itemCount: _filteredFavorites.length,
+                      itemBuilder: (context, index) {
+                        final item = _filteredFavorites[index];
+                        final String cat = item['category'] ?? 'Saved';
+
+                        return RepaintBoundary(
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: surfaceWhite,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: borderSubtle),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              item['title'] ?? '',
-                              style: const TextStyle(
-                                color: whiteText,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            if ((item['subtitle'] ?? '').isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                item['subtitle'],
-                                style: const TextStyle(
-                                    color: green,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                            if ((item['content'] ?? '').isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                item['content'],
-                                style: const TextStyle(
-                                  color: whiteText,
-                                  fontSize: 13,
-                                  height: 1.4,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: secondarySurface,
+                                        borderRadius:
+                                        BorderRadius.circular(10),
+                                        border: Border.all(color: borderSubtle),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            _getCategoryIcon(cat),
+                                            color: richEmerald,
+                                            size: 14,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            cat,
+                                            style: const TextStyle(
+                                              color: richEmerald,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    IconButton(
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      icon: const Icon(
+                                        Icons.favorite_rounded,
+                                        color: Colors.redAccent,
+                                        size: 20,
+                                      ),
+                                      onPressed: () =>
+                                          _removeItem(item['id']),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  item['title'] ?? '',
+                                  style: TextStyle(
+                                    color: textPrimary,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                if ((item['subtitle'] ?? '').isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    item['subtitle'],
+                                    style: const TextStyle(
+                                        color: richEmerald,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                                if ((item['content'] ?? '').isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    item['content'],
+                                    style: TextStyle(
+                                      color: textSecondary,
+                                      fontSize: 13,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _categoryFilterChips() {
-    return Container(
-      height: 40,
-      margin: const EdgeInsets.symmetric(vertical: 8),
+    return SizedBox(
+      height: 44,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         itemCount: _categories.length,
         itemBuilder: (context, index) {
           final cat = _categories[index];
           final bool isSelected = _selectedCategory == cat;
-          return GestureDetector(
-            onTap: () {
-              setState(() => _selectedCategory = cat);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? green : card,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected
-                      ? green
-                      : Colors.white.withValues(alpha: 0.1),
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () {
+                setState(() => _selectedCategory = cat);
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected ? richEmerald : surfaceWhite,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected ? richEmerald : borderSubtle,
+                  ),
                 ),
-              ),
-              child: Text(
-                cat,
-                style: TextStyle(
-                  color: isSelected ? Colors.black : whiteText,
-                  fontSize: 12,
-                  fontWeight:
-                  isSelected ? FontWeight.w900 : FontWeight.w600,
+                child: Center(
+                  child: Text(
+                    cat,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : textSecondary,
+                      fontSize: 12.5,
+                      fontWeight:
+                      isSelected ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -290,47 +321,57 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   }
 
   Widget _headerSection() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(10, 14, 20, 10),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
-          IconButton(
-            onPressed: _handleBack,
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: whiteText, size: 20),
+          GestureDetector(
+            onTap: _handleBack,
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: richEmerald,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: richEmerald),
+              ),
+              child: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white, size: 18),
+            ),
           ),
-          const SizedBox(width: 2),
+          const SizedBox(width: 14),
           Container(
-            width: 46,
-            height: 46,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: gold.withValues(alpha: 0.08),
-              border: Border.all(color: gold.withValues(alpha: 0.6), width: 1.5),
+              color: secondarySurface,
+              border: Border.all(color: borderSubtle),
             ),
-            child: const Icon(Icons.favorite_rounded, color: gold, size: 24),
+            child: const Icon(Icons.favorite_rounded, color: richEmerald, size: 20),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'SAVED COLLECTION',
                   style: TextStyle(
-                    color: gold,
+                    color: richEmerald,
                     fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.6,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 1.0,
                   ),
                 ),
-                SizedBox(height: 2),
+                const SizedBox(height: 2),
                 Text(
                   'Favorite Items',
                   style: TextStyle(
-                    color: whiteText,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
+                    color: textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ],

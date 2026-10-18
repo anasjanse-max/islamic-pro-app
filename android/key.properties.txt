@@ -1,0 +1,4 @@
+storePassword=Pakistan
+keyPassword=Pakistan
+keyAlias=upload
+storeFile=upload-keystore.jks

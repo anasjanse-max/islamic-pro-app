@@ -1,0 +1,5 @@
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
+-keep class com.google.android.gms.ads.** { *; }
+-keep class xyz.luan.audioplayers.** { *; }
+-keep class com.baseflow.geolocator.** { *; }
+-keep class dev.fluttercommunity.plus.sensors.** { *; }

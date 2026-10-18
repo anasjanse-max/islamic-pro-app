@@ -1,12 +1,30 @@
-import 'package:flutter/material.dart';
+﻿import 'dart:ui';
+
 import 'package:flutter/cupertino.dart';
-import 'dart:ui';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'home_screen.dart';
-import 'quran_screen.dart';
-import 'qibla_screen.dart';
-import 'tasbeeh_screen.dart';
 import 'live_tasbeeh_icon.dart';
+import 'qibla_screen.dart';
+import 'quran_screen.dart';
+import 'tasbeeh_screen.dart';
+
+class ThemeService {
+  // Global notifier to control Dark Mode across the entire app
+  static final ValueNotifier<bool> isDarkMode = ValueNotifier<bool>(false);
+
+  static Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    isDarkMode.value = prefs.getBool('app_dark_mode') ?? false;
+  }
+
+  static Future<void> toggleDarkMode(bool value) async {
+    isDarkMode.value = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('app_dark_mode', value);
+  }
+}
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,21 +34,53 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  // Theme Colors
-  static const Color background = Color(0xFF000000);
-  static const Color cardColor = Color(0xFF0A0F0C);
-  static const Color green = Color(0xFF26E17A);
-  static const Color greenDark = Color(0xFF0C3323);
-  static const Color whiteText = Color(0xFFF4F6F5);
-  static const Color greyText = Color(0xFF98A19D);
-  static const Color borderColor = Color(0xFF1A221D);
+  // ==========================================================
+  // DYNAMIC PALETTE BASED ON DARK MODE STATE
+  // ==========================================================
+  bool get _isDark => ThemeService.isDarkMode.value;
 
-  // States for toggles
+  Color get appBackground => _isDark ? const Color(0xFF0B1511) : const Color(0xFFF7F6F1);
+  Color get surfaceWhite => _isDark ? const Color(0xFF14221C) : const Color(0xFFFFFFFF);
+  Color get secondarySurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
+
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
+
+  Color get textPrimary => _isDark ? const Color(0xFFF4F6F2) : const Color(0xFF1D2924);
+  Color get textSecondary => _isDark ? const Color(0xFFAAB6AF) : const Color(0xFF66736D);
+  Color get textInactive => _isDark ? const Color(0xFF718079) : const Color(0xFF718079);
+  Color get borderSubtle => _isDark ? const Color(0xFF24332B) : const Color(0xFFD5DFDA);
+
+  // ==========================================================
+  // STATE VARIABLES
+  // ==========================================================
   bool prayerNotifications = true;
   bool vibration = true;
-  bool azanSound = true;
-  bool isPlayingTestAzan = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      prayerNotifications = prefs.getBool('prayer_notifications') ?? true;
+      vibration = prefs.getBool('vibration_enabled') ?? true;
+    });
+  }
+
+  Future<void> _savePreference(String key, bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(key, value);
+  }
+
+  // ==========================================================
+  // NAVIGATION & UI HELPERS
+  // ==========================================================
   void _handleBack() {
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
@@ -48,8 +98,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         reverseTransitionDuration: const Duration(milliseconds: 160),
         pageBuilder: (_, _, _) => page,
         transitionsBuilder: (_, animation, _, child) {
-          final curve =
-          CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+          final curve = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+          );
           return FadeTransition(
             opacity: curve,
             child: ScaleTransition(
@@ -62,21 +114,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Helper Widget for Section Headers
+  // ==========================================================
+  // CUSTOM WIDGET BUILDERS
+  // ==========================================================
   Widget _buildSectionHeader(IconData icon, String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12, top: 24),
+      padding: const EdgeInsets.only(left: 4, bottom: 10, top: 20),
       child: Row(
         children: [
-          Icon(icon, color: green, size: 20),
+          Icon(icon, color: richEmerald, size: 18),
           const SizedBox(width: 10),
           Text(
             title,
-            style: const TextStyle(
-              color: whiteText,
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
             ),
           ),
         ],
@@ -84,7 +138,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Helper Widget for Toggle Settings Rows
   Widget _buildSwitchTile({
     required String title,
     required String subtitle,
@@ -98,13 +151,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: activeColor.withOpacity(0.15),
+              color: secondarySurface,
               shape: BoxShape.circle,
+              border: Border.all(color: borderSubtle),
             ),
-            child: Icon(icon, color: activeColor, size: 22),
+            child: Icon(icon, color: activeColor, size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -113,18 +167,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                      color: whiteText,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: greyText,
+                  style: TextStyle(
+                    color: textSecondary,
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
@@ -132,8 +187,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           CupertinoSwitch(
             value: value,
-            activeColor: activeColor,
-            trackColor: const Color(0xFF2A302D),
+            activeColor: richEmerald,
+            trackColor: secondarySurface,
             onChanged: onChanged,
           ),
         ],
@@ -141,7 +196,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  // Helper Widget for Static Info Rows
   Widget _buildInfoTile({
     required String title,
     required String subtitle,
@@ -153,13 +207,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.15),
+              color: secondarySurface,
               shape: BoxShape.circle,
+              border: Border.all(color: borderSubtle),
             ),
-            child: Icon(icon, color: iconColor, size: 22),
+            child: Icon(icon, color: iconColor, size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -168,18 +223,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                      color: whiteText,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: const TextStyle(
-                    color: greyText,
+                  style: TextStyle(
+                    color: textSecondary,
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
@@ -194,67 +250,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
   // FLOATING FROSTED DOCK NAVIGATION BAR
   // ==========================================================
   Widget _buildBottomNavigation() {
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          height: 68,
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-          decoration: BoxDecoration(
-            color: const Color(0xFF09140F).withValues(alpha: 0.90),
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.12),
-              width: 1.1,
+    return Container(
+      height: 66,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      decoration: BoxDecoration(
+        color: surfaceWhite,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _navButton(
+            icon: Icons.home_filled,
+            label: 'Home',
+            active: false,
+            action: () => _navigateToScreen(const HomeScreen()),
+          ),
+          _navButton(
+            icon: Icons.menu_book_rounded,
+            label: 'Quran',
+            active: false,
+            action: () => _navigateToScreen(const QuranScreen()),
+          ),
+          _navButton(
+            icon: Icons.explore_rounded,
+            label: 'Qibla',
+            active: false,
+            action: () => _navigateToScreen(const QiblaScreen()),
+          ),
+          // Tasbih icon ab yahan bhi colorful aur animated kar diya gaya hai
+          _navButton(
+            customIcon: const LiveTasbeehIcon(
+              size: 20,
+              color: richEmerald, // Yahan color ko vibrant richEmerald kar diya hai
+              animate: true,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.65),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            label: 'Tasbih',
+            active: false,
+            action: () => _navigateToScreen(const TasbeehScreen()),
           ),
-          child: Row(
-            children: [
-              _navButton(
-                icon: Icons.home_rounded,
-                label: 'Home',
-                active: false,
-                action: () => _navigateToScreen(const HomeScreen()),
-              ),
-              _navButton(
-                icon: Icons.menu_book_rounded,
-                label: 'Quran',
-                active: false,
-                action: () => _navigateToScreen(const QuranScreen()),
-              ),
-              _navButton(
-                icon: Icons.explore_rounded,
-                label: 'Qibla',
-                active: false,
-                action: () => _navigateToScreen(const QiblaScreen()),
-              ),
-              _navButton(
-                customIcon: const LiveTasbeehIcon(
-                  size: 23,
-                  color: Color(0xFFB0BEC5), // Inactive state color
-                  animate: false,
-                ),
-                label: 'Tasbih',
-                active: false,
-                action: () => _navigateToScreen(const TasbeehScreen()),
-              ),
-              _navButton(
-                icon: Icons.settings_rounded,
-                label: 'Settings',
-                active: true, // Settings is active here
-                action: () {},
-              ),
-            ],
+          _navButton(
+            icon: Icons.settings_rounded,
+            label: 'Settings',
+            active: true,
+            action: () {},
           ),
-        ),
+        ],
       ),
     );
   }
@@ -266,56 +315,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required bool active,
     required VoidCallback action,
   }) {
-    final iconColor = active ? green : const Color(0xFFB0BEC5);
+    final iconColor = active ? richEmerald : textInactive;
+    final textColor = active ? richEmerald : textSecondary;
 
     return Expanded(
       child: GestureDetector(
         onTap: action,
         behavior: HitTestBehavior.opaque,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          margin: const EdgeInsets.symmetric(horizontal: 2),
+        child: Container(
           decoration: BoxDecoration(
-            color: active ? greenDark : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-            border: active
-                ? Border.all(
-              color: green.withValues(alpha: 0.55),
-              width: 1,
-            )
-                : null,
-            boxShadow: active
-                ? [
-              BoxShadow(
-                color: green.withValues(alpha: 0.2),
-                blurRadius: 8,
-              )
-            ]
-                : [],
+            color: active ? secondarySurface : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                width: 24,
-                height: 24,
+                width: 22,
+                height: 22,
                 child: Center(
                   child: customIcon ??
                       Icon(
                         icon,
                         color: iconColor,
-                        size: 22,
+                        size: 20,
                       ),
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
-                  color: iconColor,
-                  fontSize: 9.5,
-                  fontWeight: active ? FontWeight.w900 : FontWeight.w600,
+                  color: textColor,
+                  fontSize: 10,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                  letterSpacing: -0.2,
                 ),
               ),
             ],
@@ -325,268 +359,228 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  // ==========================================================
+  // MAIN BUILD METHOD
+  // ==========================================================
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBack();
-      },
-      child: Scaffold(
-        backgroundColor: background,
-        body: SafeArea(
-          bottom: false,
-          child: Stack(
-            children: [
-              Column(
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, darkEnabled, child) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _handleBack();
+          },
+          child: Scaffold(
+            backgroundColor: appBackground,
+            body: SafeArea(
+              bottom: false,
+              child: Stack(
                 children: [
-                  // App Bar / Header
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                    child: Row(
-                      children: [
-                        GestureDetector(
-                          onTap: _handleBack,
-                          child: Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF101412),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: borderColor),
-                            ),
-                            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                                color: whiteText, size: 16),
-                          ),
+                  Column(
+                    children: [
+                      // App Bar / Header
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: primaryDeepEmerald,
+                          borderRadius: BorderRadius.circular(18),
                         ),
-                        const Expanded(
-                          child: Center(
-                            child: Text(
-                              'Settings',
-                              style: TextStyle(
-                                color: whiteText,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 0.5,
+                        child: Row(
+                          children: [
+                            GestureDetector(
+                              onTap: _handleBack,
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: richEmerald,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_back_ios_new_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
                               ),
                             ),
+                            const Expanded(
+                              child: Center(
+                                child: Text(
+                                  'Settings',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 40),
+                          ],
+                        ),
+                      ),
+
+                      // Scrollable Content
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // SECTION 0: Appearance / Dark Mode
+                              _buildSectionHeader(
+                                Icons.palette_rounded,
+                                'Appearance',
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: surfaceWhite,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: borderSubtle),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.02),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: _buildSwitchTile(
+                                  title: 'Dark Mode',
+                                  subtitle: darkEnabled ? 'Dark theme is active' : 'Light theme is active',
+                                  icon: darkEnabled ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                                  activeColor: mutedGold,
+                                  value: darkEnabled,
+                                  onChanged: (val) {
+                                    ThemeService.toggleDarkMode(val);
+                                    setState(() {});
+                                  },
+                                ),
+                              ),
+
+                              // SECTION 1: Prayer Notifications
+                              _buildSectionHeader(
+                                Icons.notifications_active_rounded,
+                                'Prayer Notifications',
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: surfaceWhite,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: borderSubtle),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.02),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    _buildSwitchTile(
+                                      title: 'Prayer Notifications',
+                                      subtitle: prayerNotifications
+                                          ? 'Prayer alerts are ON'
+                                          : 'Prayer alerts are OFF',
+                                      icon: Icons.notifications_active_rounded,
+                                      activeColor: richEmerald,
+                                      value: prayerNotifications,
+                                      onChanged: (val) {
+                                        setState(() => prayerNotifications = val);
+                                        _savePreference('prayer_notifications', val);
+                                      },
+                                    ),
+                                    Divider(
+                                      color: borderSubtle,
+                                      height: 1,
+                                      indent: 70,
+                                      endIndent: 16,
+                                    ),
+                                    _buildSwitchTile(
+                                      title: 'Vibration',
+                                      subtitle: vibration
+                                          ? 'Vibration is ON'
+                                          : 'Vibration is OFF',
+                                      icon: Icons.vibration_rounded,
+                                      activeColor: mutedGold,
+                                      value: vibration,
+                                      onChanged: (val) {
+                                        setState(() => vibration = val);
+                                        _savePreference('vibration_enabled', val);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // SECTION 2: App Information
+                              _buildSectionHeader(
+                                Icons.info_outline_rounded,
+                                'App Information',
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: surfaceWhite,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: borderSubtle),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.02),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    _buildInfoTile(
+                                      title: 'Prayer Times',
+                                      subtitle: 'Your daily prayer companion',
+                                      icon: Icons.mosque_rounded,
+                                      iconColor: richEmerald,
+                                    ),
+                                    Divider(
+                                      color: borderSubtle,
+                                      height: 1,
+                                      indent: 70,
+                                      endIndent: 16,
+                                    ),
+                                    _buildInfoTile(
+                                      title: 'Version',
+                                      subtitle: '1.0.0',
+                                      icon: Icons.verified_rounded,
+                                      iconColor: mutedGold,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(width: 40), // Balance for centering title
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
 
-                  // Scrollable Content
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 100), // Bottom padding for Nav Bar
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // SECTION 1: Prayer Notifications
-                          _buildSectionHeader(
-                              Icons.notifications_active_rounded, 'Prayer Notifications'),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: borderColor),
-                            ),
-                            child: Column(
-                              children: [
-                                _buildSwitchTile(
-                                  title: 'Prayer Notifications',
-                                  subtitle: prayerNotifications
-                                      ? 'Prayer alerts are ON'
-                                      : 'Prayer alerts are OFF',
-                                  icon: Icons.notifications_active_rounded,
-                                  activeColor: green,
-                                  value: prayerNotifications,
-                                  onChanged: (val) => setState(() => prayerNotifications = val),
-                                ),
-                                Divider(
-                                    color: Colors.white.withOpacity(0.05),
-                                    height: 1,
-                                    indent: 70,
-                                    endIndent: 16),
-                                _buildSwitchTile(
-                                  title: 'Vibration',
-                                  subtitle: vibration
-                                      ? 'Vibration is ON'
-                                      : 'Vibration is OFF',
-                                  icon: Icons.vibration_rounded,
-                                  activeColor: const Color(0xFFF39C12), // Orange
-                                  value: vibration,
-                                  onChanged: (val) => setState(() => vibration = val),
-                                ),
-                                Divider(
-                                    color: Colors.white.withOpacity(0.05),
-                                    height: 1,
-                                    indent: 70,
-                                    endIndent: 16),
-                                _buildSwitchTile(
-                                  title: 'Azan Sound',
-                                  subtitle: azanSound
-                                      ? 'Azan sound is ON'
-                                      : 'Azan sound is OFF',
-                                  icon: Icons.volume_up_rounded,
-                                  activeColor: const Color(0xFF3498DB), // Blue
-                                  value: azanSound,
-                                  onChanged: (val) => setState(() => azanSound = val),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // SECTION 2: Azan Test
-                          _buildSectionHeader(Icons.volume_up_rounded, 'Azan Test'),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: borderColor),
-                            ),
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: Column(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 14),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 42,
-                                        height: 42,
-                                        decoration: BoxDecoration(
-                                          color: green.withOpacity(0.15),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(Icons.volume_up_rounded,
-                                            color: green, size: 22),
-                                      ),
-                                      const SizedBox(width: 14),
-                                      const Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Test Azan',
-                                              style: TextStyle(
-                                                  color: whiteText,
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w800),
-                                            ),
-                                            SizedBox(height: 2),
-                                            Text(
-                                              'Check your Azan notification sound',
-                                              style: TextStyle(
-                                                color: greyText,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Play Test Azan Button
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        isPlayingTestAzan = !isPlayingTestAzan;
-                                      });
-                                    },
-                                    child: Container(
-                                      width: double.infinity,
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
-                                      decoration: BoxDecoration(
-                                        color: green,
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            isPlayingTestAzan
-                                                ? Icons.stop_rounded
-                                                : Icons.play_arrow_rounded,
-                                            color: Colors.black,
-                                            size: 22,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            isPlayingTestAzan
-                                                ? 'Stop Test Azan'
-                                                : 'Play Test Azan',
-                                            style: const TextStyle(
-                                              color: Colors.black,
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // SECTION 3: App Information
-                          _buildSectionHeader(Icons.info_outline_rounded, 'App Information'),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: cardColor,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: borderColor),
-                            ),
-                            child: Column(
-                              children: [
-                                _buildInfoTile(
-                                  title: 'Prayer Times',
-                                  subtitle: 'Your daily prayer companion',
-                                  icon: Icons.mosque_rounded,
-                                  iconColor: const Color(0xFF1ABC9C), // Teal/Dark Green
-                                ),
-                                Divider(
-                                    color: Colors.white.withOpacity(0.05),
-                                    height: 1,
-                                    indent: 70,
-                                    endIndent: 16),
-                                _buildInfoTile(
-                                  title: 'Version',
-                                  subtitle: '1.0.0',
-                                  icon: Icons.verified_rounded,
-                                  iconColor: const Color(0xFF3498DB), // Blue
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  // Floating Bottom Nav
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _buildBottomNavigation(),
                   ),
                 ],
               ),
-
-              // Floating Bottom Nav
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: _buildBottomNavigation(),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

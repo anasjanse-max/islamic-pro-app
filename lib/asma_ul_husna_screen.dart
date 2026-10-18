@@ -1,6 +1,10 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:ui';
+
 import 'favorites_service.dart';
-import 'more_screen.dart'; // Navigates back to More screen smoothly
+import 'more_screen.dart'; // Navigates smoothly back to More screen
+import 'settings_screen.dart';
 
 class AsmaItem {
   final int number;
@@ -24,16 +28,24 @@ class AsmaUlHusnaScreen extends StatefulWidget {
 }
 
 class _AsmaUlHusnaScreenState extends State<AsmaUlHusnaScreen> {
-  static const Color background = Color(0xFF000000);
-  static const Color card = Color(0xFF0A0F0C);
-  static const Color card2 = Color(0xFF101613);
+  // ==========================================================
+  // DYNAMIC PALETTE BASED ON DARK MODE STATE
+  // ==========================================================
+  bool get _isDark => ThemeService.isDarkMode.value;
 
-  static const Color green = Color(0xFF26E17A);
-  static const Color greenDark = Color(0xFF0C3323);
-  static const Color gold = Color(0xFFE8B63D);
+  Color get appBackground => _isDark ? const Color(0xFF0B1511) : const Color(0xFFF7F6F1);
+  Color get surfaceWhite => _isDark ? const Color(0xFF14221C) : const Color(0xFFFFFFFF);
+  Color get secondarySurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
 
-  static const Color whiteText = Color(0xFFF4F6F5);
-  static const Color greyText = Color(0xFF98A19D);
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
+
+  Color get textPrimary => _isDark ? const Color(0xFFF4F6F2) : const Color(0xFF1D2924);
+  Color get textSecondary => _isDark ? const Color(0xFFAAB6AF) : const Color(0xFF66736D);
+  Color get textInactive => _isDark ? const Color(0xFF718079) : const Color(0xFF718079);
+  Color get borderSubtle => _isDark ? const Color(0xFF24332B) : const Color(0xFFD5DFDA);
 
   final List<AsmaItem> _names = const [
     AsmaItem(number: 1, arabic: 'الرَّحْمَنُ', transliteration: 'Ar-Rahman', urduMeaning: 'بڑا مہربان'),
@@ -132,99 +144,107 @@ class _AsmaUlHusnaScreenState extends State<AsmaUlHusnaScreen> {
     AsmaItem(number: 94, arabic: 'الْبَدِيعُ', transliteration: 'Al-Badi’', urduMeaning: 'خوبصورت پیدا کرنے والا'),
     AsmaItem(number: 95, arabic: 'الْبَاقِي', transliteration: 'Al-Baqi', urduMeaning: 'ہمیشہ رہنے والا'),
     AsmaItem(number: 96, arabic: 'الْوَارِثُ', transliteration: 'Al-Warith', urduMeaning: 'سب کا وارث'),
-    AsmaItem(number: 97, arabic: 'الرَّشِيدُ', transliteration: 'Ar-Rashid', urduMeaning: 'سیدھی راہ دکھانے والا'),
+    AsmaItem(number: 97, arabic: 'الْرَّشِيدُ', transliteration: 'Ar-Rashid', urduMeaning: 'سیدھی راہ دکھانے والا'),
     AsmaItem(number: 98, arabic: 'الصَّبُورُ', transliteration: 'As-Sabur', urduMeaning: 'بڑا صبر کرنے والا'),
     AsmaItem(number: 99, arabic: 'اللَّهُ', transliteration: 'Allah', urduMeaning: 'اللہ (خالقِ مطلق)'),
   ];
 
   void _handleBack() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 180),
-        pageBuilder: (_, __, ___) => const MoreScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 180),
+          pageBuilder: (_, __, ___) => const MoreScreen(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBack();
-      },
-      child: Scaffold(
-        backgroundColor: background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _appBar(),
-              Expanded(
-                child: ListView.builder(
-                  // Added AlwaysScrollableScrollPhysics for better iOS/Android native feel
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(),
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, darkEnabled, child) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _handleBack();
+          },
+          child: Scaffold(
+            backgroundColor: appBackground, // Applied Dynamic Background
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _appBar(),
+                  Expanded(
+                    child: ListView.builder(
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      itemCount: _names.length,
+                      itemBuilder: (context, index) {
+                        return RepaintBoundary(
+                          child: _nameCard(_names[index]),
+                        );
+                      },
+                    ),
                   ),
-                  // cacheExtent prefetches off-screen items so scrolling is lag-free
-                  cacheExtent: 2000,
-                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
-                  itemCount: _names.length,
-                  itemBuilder: (context, index) {
-                    // RepaintBoundary isolates each card's repaints to optimize GPU rendering
-                    return RepaintBoundary(
-                      child: _nameCard(_names[index]),
-                    );
-                  },
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _appBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
           GestureDetector(
             onTap: _handleBack,
             child: Container(
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: card,
+                color: richEmerald, // Premium Action Button
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: richEmerald),
               ),
               child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: whiteText, size: 16),
+                  color: Colors.white, size: 18),
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'أسماء الله الحسنى',
                   style: TextStyle(
-                    color: green,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
+                    color: textSecondary, // Secondary Text
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
                   'اللہ تعالیٰ کے 99 نام',
                   style: TextStyle(
-                    color: whiteText,
+                    color: textPrimary, // Dark/Light Heading
                     fontSize: 18,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ],
@@ -238,12 +258,19 @@ class _AsmaUlHusnaScreenState extends State<AsmaUlHusnaScreen> {
   Widget _nameCard(AsmaItem item) {
     final String id = 'asma_${item.number}';
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: surfaceWhite, // Clean Dynamic Cards
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04), // Very subtle soft shadow
+            blurRadius: 8,
+            offset: const Offset(0, 4), // Premium downward shadow
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -251,17 +278,17 @@ class _AsmaUlHusnaScreenState extends State<AsmaUlHusnaScreen> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: card2,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: gold.withOpacity(0.3)),
+              color: secondarySurface, // Very Light Sage / Dark Surface
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderSubtle),
             ),
             child: Center(
               child: Text(
                 '${item.number}',
                 style: const TextStyle(
-                  color: gold,
+                  color: richEmerald, // Emerald number highlight
                   fontSize: 12,
-                  fontWeight: FontWeight.w900,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -273,19 +300,19 @@ class _AsmaUlHusnaScreenState extends State<AsmaUlHusnaScreen> {
               children: [
                 Text(
                   item.transliteration,
-                  style: const TextStyle(
-                    color: whiteText,
+                  style: TextStyle(
+                    color: textPrimary, // Dynamic Title
                     fontSize: 14,
-                    fontWeight: FontWeight.w900,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   item.urduMeaning,
-                  style: const TextStyle(
-                    color: greyText,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
+                  style: TextStyle(
+                    color: textSecondary, // Secondary text for translation
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
@@ -295,12 +322,12 @@ class _AsmaUlHusnaScreenState extends State<AsmaUlHusnaScreen> {
             item.arabic,
             textDirection: TextDirection.rtl,
             style: const TextStyle(
-              color: gold,
-              fontSize: 21,
-              fontWeight: FontWeight.bold,
+              color: primaryDeepEmerald, // Strong Islamic Emerald Arabic Text
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           FutureBuilder<bool>(
             future: FavoritesService.isFavorite(id),
             builder: (context, snapshot) {
@@ -310,7 +337,7 @@ class _AsmaUlHusnaScreenState extends State<AsmaUlHusnaScreen> {
                 constraints: const BoxConstraints(),
                 icon: Icon(
                   isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                  color: isFav ? Colors.redAccent : greyText,
+                  color: isFav ? Colors.redAccent : textInactive, // Inactive soft color
                   size: 20,
                 ),
                 onPressed: () async {

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 enum NavScreen { home, quran, qibla, tasbeeh, settings }
 
@@ -30,7 +30,7 @@ class SharedBottomNavBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF080D0A),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.10)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
         ),
         child: Row(
           children: [
@@ -95,7 +95,7 @@ class SharedBottomNavBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: isActive ? greenDark : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
-            border: isActive ? Border.all(color: green.withOpacity(0.48)) : null,
+            border: isActive ? Border.all(color: green.withValues(alpha: 0.48)) : null,
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

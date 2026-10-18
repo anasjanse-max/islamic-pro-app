@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'favorites_service.dart';
-import 'more_screen.dart'; // Navigates smoothly back to More screen
+import 'more_screen.dart'; // Smooth navigation ke liye MoreScreen import kiya
+import 'settings_screen.dart';
 
 class IslamicCalculatorScreen extends StatefulWidget {
   const IslamicCalculatorScreen({super.key});
@@ -11,16 +12,24 @@ class IslamicCalculatorScreen extends StatefulWidget {
 }
 
 class _IslamicCalculatorScreenState extends State<IslamicCalculatorScreen> {
-  static const Color background = Color(0xFF000000);
-  static const Color card = Color(0xFF0A0F0C);
-  static const Color card2 = Color(0xFF101613);
+  // ==========================================================
+  // DYNAMIC PALETTE BASED ON DARK MODE STATE
+  // ==========================================================
+  bool get _isDark => ThemeService.isDarkMode.value;
 
-  static const Color green = Color(0xFF26E17A);
-  static const Color greenDark = Color(0xFF0C3323);
-  static const Color gold = Color(0xFFE8B63D);
+  Color get appBackground => _isDark ? const Color(0xFF0B1511) : const Color(0xFFF7F6F1);
+  Color get surfaceWhite => _isDark ? const Color(0xFF14221C) : const Color(0xFFFFFFFF);
+  Color get secondarySurface => _isDark ? const Color(0xFF192B23) : const Color(0xFFE7F0EB);
 
-  static const Color whiteText = Color(0xFFF4F6F5);
-  static const Color greyText = Color(0xFF98A19D);
+  static const Color primaryDeepEmerald = Color(0xFF164E3B);
+  static const Color richEmerald = Color(0xFF1F6B52);
+  static const Color softEmerald = Color(0xFF6FAF96);
+  static const Color mutedGold = Color(0xFFB5964A);
+
+  Color get textPrimary => _isDark ? const Color(0xFFF4F6F2) : const Color(0xFF1D2924);
+  Color get textSecondary => _isDark ? const Color(0xFFAAB6AF) : const Color(0xFF66736D);
+  Color get textInactive => _isDark ? const Color(0xFF718079) : const Color(0xFF718079);
+  Color get borderSubtle => _isDark ? const Color(0xFF24332B) : const Color(0xFFD5DFDA);
 
   final TextEditingController _wealthController = TextEditingController();
   double _zakatResult = 0.0;
@@ -33,14 +42,18 @@ class _IslamicCalculatorScreenState extends State<IslamicCalculatorScreen> {
   }
 
   void _handleBack() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 180),
-        pageBuilder: (_, __, ___) => const MoreScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 180),
+          pageBuilder: (_, __, ___) => const MoreScreen(),
+          transitionsBuilder: (_, animation, __, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
+      );
+    }
   }
 
   @override
@@ -51,69 +64,85 @@ class _IslamicCalculatorScreenState extends State<IslamicCalculatorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
-        if (didPop) return;
-        _handleBack();
-      },
-      child: Scaffold(
-        backgroundColor: background,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _appBar(),
-              Expanded(
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(
-                    parent: AlwaysScrollableScrollPhysics(), // Native smooth scroll
+    return ValueListenableBuilder<bool>(
+      valueListenable: ThemeService.isDarkMode,
+      builder: (context, darkEnabled, child) {
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            _handleBack();
+          },
+          child: Scaffold(
+            backgroundColor: appBackground, // Applied Dynamic Background
+            body: SafeArea(
+              child: Column(
+                children: [
+                  _appBar(),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(), // Native smooth scroll
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _zakatCard(),
+                          const SizedBox(height: 20),
+                          _infoSection(),
+                        ],
+                      ),
+                    ),
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _zakatCard(),
-                      const SizedBox(height: 20),
-                      _infoSection(),
-                    ],
-                  ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
   Widget _appBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(
         children: [
           GestureDetector(
             onTap: _handleBack,
             child: Container(
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: card,
+                color: richEmerald, // Premium Action Button
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
+                border: Border.all(color: richEmerald),
               ),
               child: const Icon(Icons.arrow_back_ios_new_rounded,
-                  color: whiteText, size: 16),
+                  color: Colors.white, size: 18),
             ),
           ),
           const SizedBox(width: 14),
-          const Expanded(
-            child: Text(
-              'Islamic Calculator',
-              style: TextStyle(
-                color: whiteText,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-              ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Islamic Calculator',
+                  style: TextStyle(
+                    color: textPrimary, // Dynamic Heading
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Calculate your annual Zakat due',
+                  style: TextStyle(color: textSecondary, fontSize: 12), // Secondary Text
+                ),
+              ],
             ),
           ),
         ],
@@ -126,9 +155,16 @@ class _IslamicCalculatorScreenState extends State<IslamicCalculatorScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: card,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: surfaceWhite, // Clean Dynamic Cards
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04), // Very subtle soft shadow
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,35 +172,35 @@ class _IslamicCalculatorScreenState extends State<IslamicCalculatorScreen> {
           Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: greenDark,
+                  color: secondarySurface, // Very Light Sage / Dark Surface
                   shape: BoxShape.circle,
-                  border: Border.all(color: green, width: 1.2),
+                  border: Border.all(color: borderSubtle),
                 ),
-                child: const Icon(Icons.calculate_rounded, color: green, size: 24),
+                child: const Icon(Icons.calculate_rounded, color: richEmerald, size: 20),
               ),
               const SizedBox(width: 12),
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
+                  const Text(
                     'ZAKAT CALCULATOR',
                     style: TextStyle(
-                      color: green,
+                      color: richEmerald,
                       fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.3,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.0,
                     ),
                   ),
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
                   Text(
                     'Calculate 2.5% Zakat',
                     style: TextStyle(
-                      color: whiteText,
+                      color: textPrimary,
                       fontSize: 15,
-                      fontWeight: FontWeight.w800,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
@@ -175,35 +211,44 @@ class _IslamicCalculatorScreenState extends State<IslamicCalculatorScreen> {
           TextField(
             controller: _wealthController,
             keyboardType: TextInputType.number,
-            style: const TextStyle(color: whiteText, fontSize: 16),
+            style: TextStyle(color: textPrimary, fontSize: 15),
             decoration: InputDecoration(
               labelText: 'Total Savings / Wealth Amount',
-              labelStyle: const TextStyle(color: greyText, fontSize: 13),
+              labelStyle: TextStyle(color: textSecondary, fontSize: 13),
               filled: true,
-              fillColor: card2,
-              prefixIcon: const Icon(Icons.monetization_on_rounded, color: gold),
+              fillColor: secondarySurface,
+              prefixIcon: const Icon(Icons.monetization_on_rounded, color: mutedGold, size: 20),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: borderSubtle),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: borderSubtle),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: richEmerald),
               ),
             ),
           ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 46,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                backgroundColor: green,
-                foregroundColor: Colors.black,
+                backgroundColor: richEmerald,
+                foregroundColor: Colors.white,
+                elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ),
               onPressed: _calculateZakat,
               child: const Text(
                 'Calculate Zakat',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
             ),
           ),
@@ -212,9 +257,9 @@ class _IslamicCalculatorScreenState extends State<IslamicCalculatorScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: card2,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: gold.withOpacity(0.3)),
+              color: secondarySurface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: borderSubtle),
             ),
             child: Column(
               children: [
@@ -224,10 +269,10 @@ class _IslamicCalculatorScreenState extends State<IslamicCalculatorScreen> {
                     const Text(
                       'TOTAL ZAKAT DUE (2.5%)',
                       style: TextStyle(
-                        color: gold,
+                        color: richEmerald,
                         fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 1.0,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -240,7 +285,7 @@ class _IslamicCalculatorScreenState extends State<IslamicCalculatorScreen> {
                           constraints: const BoxConstraints(),
                           icon: Icon(
                             isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                            color: isFav ? Colors.redAccent : greyText,
+                            color: isFav ? Colors.redAccent : textInactive,
                             size: 18,
                           ),
                           onPressed: () async {
@@ -261,10 +306,10 @@ class _IslamicCalculatorScreenState extends State<IslamicCalculatorScreen> {
                 const SizedBox(height: 6),
                 Text(
                   '$_zakatResult',
-                  style: const TextStyle(
-                    color: whiteText,
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
+                  style: TextStyle(
+                    color: _isDark ? softEmerald : primaryDeepEmerald,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
@@ -279,25 +324,32 @@ class _IslamicCalculatorScreenState extends State<IslamicCalculatorScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: card,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        color: surfaceWhite, // Clean Dynamic Card
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderSubtle),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             'زکوٰۃ کے بارے میں',
             style: TextStyle(
-              color: whiteText,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
+              color: textPrimary,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             'زکوٰۃ اسلام کے بنیادی ارکان میں سے ایک ہے۔ یہ ہر اس مسلمان پر فرض ہے جس کے پاس نصاب کی مقدار کے برابر مال موجود ہو کہ وہ سالانہ اپنے قابلِ زکوٰۃ مال کا 2.5 فیصد ادا کرے۔',
-            style: TextStyle(color: greyText, fontSize: 13, height: 1.5, fontWeight: FontWeight.w600),
+            style: TextStyle(color: textSecondary, fontSize: 13, height: 1.5, fontWeight: FontWeight.w400),
           ),
         ],
       ),
